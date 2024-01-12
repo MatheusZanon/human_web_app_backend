@@ -49,6 +49,38 @@ class Login(Resource):
         else:
             return {"error": "Credenciais inválidas"}, 401
 
+class Solicitacao(Resource):
+    def get(self):
+        return 200
+
+    def post(self):
+        try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('user_name', type=str, required=True, help='Nome é obrigatório')
+            parser.add_argument('user_email', type=str, required=True, help='Email é obrigatório')
+            parser.add_argument('user_password', type=str, required=True, help='Senha é obrigatória')
+            parser.add_argument('telefone', type=int)
+            parser.add_argument('setor', type=str)
+            # Adicione mais campos conforme necessário
+            
+            args = parser.parse_args()
+            hash_password = hash_lib(args['user_password'])
+
+            # Aqui você pode realizar a lógica de cadastro no banco de dados
+            # Exemplo fictício usando cursor:
+            query = """INSERT INTO solicitacoes_cadastro (nome, email, senha, telefone_celular, setor) 
+                       VALUES (%s, %s, %s, %s, %s)"""
+            values = (args['user_name'], args['user_email'], hash_password, args['telefone'], args['setor'])
+
+            with mysql.connector.connect(**db_conf) as conn, conn.cursor() as cursor:
+                cursor.execute(query, values)
+                conn.commit()
+
+            return {"message": "Funcionário cadastrado com sucesso!"}, 200
+
+        except Exception as error:
+            return {"error": f"Erro durante o cadastro do funcionário: {error}"}, 500
+
 class Funcionario(Resource):
     def get(self):
         try: 
@@ -75,34 +107,11 @@ class Funcionario(Resource):
     
     def post(self):
         try:
-            parser = reqparse.RequestParser()
-            parser.add_argument('user_name', type=str, required=True, help='Nome é obrigatório')
-            parser.add_argument('user_email', type=str, required=True, help='Email é obrigatório')
-            parser.add_argument('user_password', type=str, required=True, help='Senha é obrigatória')
-            parser.add_argument('telefone_celular', type=int)
-            parser.add_argument('setor', type=str)
-            parser.add_argument('cargo_id', type=int, required=True, help='Cargo é obrigatório')
-            # Adicione mais campos conforme necessário
-
-            args = parser.parse_args()
-            hash_password = hash_lib(args['user_password'])
-
-            # Aqui você pode realizar a lógica de cadastro no banco de dados
-            # Exemplo fictício usando cursor:
-            query = """INSERT INTO funcionarios (nome, email, senha, telefone_celular, setor, cargo_id) 
-                       VALUES (%s, %s, %s, %s, %s, %s)"""
-            values = (args['user_name'], args['user_email'], hash_password, args['telefone_celular'], args['setor'], args['cargo_id'])
-
-            with mysql.connector.connect(**db_conf) as conn, conn.cursor() as cursor:
-                cursor.execute(query, values)
-                conn.commit()
-
             return {"message": "Funcionário cadastrado com sucesso!"}, 200
-
         except Exception as error:
             return {"error": f"Erro durante o cadastro do funcionário: {error}"}, 500
 
-    
+
 class Cliente(Resource):
     def get(self):      
         try: 
@@ -156,6 +165,7 @@ class Cliente(Resource):
             return {"error": f"Erro durante o cadastro do cliente: {error}"}, 500
 
 api.add_resource(Login, '/login')
+api.add_resource(Solicitacao, '/solicitacao')
 api.add_resource(Funcionario, '/funcionarios')
 api.add_resource(Cliente, '/clientes')
 
