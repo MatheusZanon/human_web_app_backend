@@ -6,13 +6,12 @@ from mysql.connector import errorcode
 from components.db_config import db_config
 from components.importacao_hash_lib import hash_lib
 
-db_conf = db_config()
-
 # Configuração do aplicativo e da Api
 app = Flask(__name__)
 CORS(app)
 api = Api(app)
 
+db_conf = db_config()
 # Configurações do banco de dados (substitua pelos seus próprios valores)
 try: 
     conn = mysql.connector.connect(**db_conf)
