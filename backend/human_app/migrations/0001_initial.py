@@ -25,8 +25,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'clientes_financeiro',
-                'managed': False,
+                'db_table': 'clientes_financeiro'
             },
         ),
         migrations.CreateModel(
@@ -41,8 +40,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'clientes_financeiro_reembolsos',
-                'managed': False,
+                'db_table': 'clientes_financeiro_reembolsos'
             },
         ),
         migrations.CreateModel(
@@ -79,8 +77,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'clientes_financeiro_valores',
-                'managed': False,
+                'db_table': 'clientes_financeiro_valores'
             },
         ),
         migrations.CreateModel(
@@ -98,8 +95,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'funcionarios',
-                'managed': False,
+                'db_table': 'funcionarios'
             },
         ),
         migrations.CreateModel(
@@ -115,8 +111,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'robos',
-                'managed': False,
+                'db_table': 'robos'
             },
         ),
         migrations.CreateModel(
@@ -132,8 +127,7 @@ class Migration(migrations.Migration):
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
             ],
             options={
-                'db_table': 'solicitacoes_cadastro',
-                'managed': False,
+                'db_table': 'solicitacoes_cadastro'
             },
         ),
     ]

@@ -13,7 +13,6 @@ class ClientesFinanceiro(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'clientes_financeiro'
 
 class ClientesFinanceiroValores(models.Model):
@@ -51,7 +50,6 @@ class ClientesFinanceiroValores(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'clientes_financeiro_valores'
 
 
@@ -68,7 +66,6 @@ class ClientesFinanceiroReembolsos(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'clientes_financeiro_reembolsos'
 
 
@@ -84,7 +81,6 @@ class Funcionarios(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'funcionarios'
 
 
@@ -98,7 +94,6 @@ class Robos(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'robos'
 
 
@@ -112,5 +107,4 @@ class SolicitacoesCadastro(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
 
     class Meta:
-        managed = False
         db_table = 'solicitacoes_cadastro'
