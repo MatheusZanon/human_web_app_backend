@@ -10,7 +10,7 @@ class ClientesFinanceiroAPI(APIView):
     def get(self, request, format=None):
         clientes = ClientesFinanceiro.objects.all()
         serializer = ClientesFinanceiroSerializer(clientes, many=True)
-        if serializer.is_valid():
+        if serializer:
             return Response(serializer.data, status=HTTP_200_OK)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
@@ -20,7 +20,7 @@ class ClientesFinanceiroValoresAPI(APIView):
     def get(self, request, format=None):
         clientes = ClientesFinanceiroValores.objects.all()
         serializer = ClientesFinanceiroValoresSerializer(clientes, many=True)
-        if serializer.is_valid():
+        if serializer:
             return Response(serializer.data, status=HTTP_200_OK)
         else:
             return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
