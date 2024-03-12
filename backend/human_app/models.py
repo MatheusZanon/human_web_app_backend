@@ -2,15 +2,6 @@ from django.db import models
 
 # Create your models here.
 
-class Cargos(models.Model):
-    nome = models.CharField(max_length=25)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'cargos'
-
 class ClientesFinanceiro(models.Model):
     nome_razao_social = models.CharField(max_length=255)
     cnpj = models.CharField(max_length=25, blank=True, null=True)
@@ -89,7 +80,6 @@ class Funcionarios(models.Model):
     cpf = models.CharField(max_length=11, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
     setor = models.CharField(max_length=55)
-    cargo = models.ForeignKey(Cargos, models.DO_NOTHING)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
