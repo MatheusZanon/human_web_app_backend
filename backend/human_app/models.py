@@ -11,7 +11,6 @@ class Cargos(models.Model):
         managed = False
         db_table = 'cargos'
 
-
 class ClientesFinanceiro(models.Model):
     nome_razao_social = models.CharField(max_length=255)
     cnpj = models.CharField(max_length=25, blank=True, null=True)
@@ -26,23 +25,11 @@ class ClientesFinanceiro(models.Model):
         managed = False
         db_table = 'clientes_financeiro'
 
-
-class ClientesFinanceiroReembolsos(models.Model):
-    cliente = models.ForeignKey(ClientesFinanceiro, models.CASCADE)
-    descricao = models.CharField(max_length=255, blank=True, null=True)
-    valor = models.FloatField(blank=True, null=True)
-    mes = models.IntegerField()
-    ano = models.IntegerField()
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        managed = False
-        db_table = 'clientes_financeiro_reembolsos'
-
-
 class ClientesFinanceiroValores(models.Model):
-    cliente = models.ForeignKey(ClientesFinanceiro, models.CASCADE)
+    cliente = models.ForeignKey(to=ClientesFinanceiro, 
+                                   on_delete=models.CASCADE, 
+                                   related_name='valores',
+                                   null=False, blank=False)
     cod_empresa = models.IntegerField(blank=True, null=True)
     convenio_farmacia = models.FloatField(blank=True, null=True)
     adiant_salarial = models.FloatField(blank=True, null=True)
@@ -75,6 +62,23 @@ class ClientesFinanceiroValores(models.Model):
     class Meta:
         managed = False
         db_table = 'clientes_financeiro_valores'
+
+
+class ClientesFinanceiroReembolsos(models.Model):
+    cliente = models.ForeignKey(to=ClientesFinanceiro, 
+                                   on_delete=models.CASCADE,
+                                   related_name='reembolsos',
+                                   null=False, blank=False)
+    descricao = models.CharField(max_length=255, blank=True, null=True)
+    valor = models.FloatField(blank=True, null=True)
+    mes = models.IntegerField()
+    ano = models.IntegerField()
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        managed = False
+        db_table = 'clientes_financeiro_reembolsos'
 
 
 class Funcionarios(models.Model):

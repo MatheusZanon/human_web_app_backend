@@ -17,9 +17,11 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path
 from human_app.views import ClientesFinanceiroAPI
+from human_app.views import ClientesFinanceiroValoresAPI
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('clientes_financeiro/', ClientesFinanceiroAPI.as_view())
+    path('clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
+    path('clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view())
 ]
