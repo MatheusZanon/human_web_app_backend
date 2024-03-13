@@ -18,6 +18,7 @@ class ClientesFinanceiroValoresSerializer(serializers.ModelSerializer):
 class RobosSerializer(serializers.ModelSerializer):
     class Meta:
        model = Robos
+       fields = '__all__'
 
 class FuncionariosSerializer(serializers.ModelSerializer):
     class Meta:
