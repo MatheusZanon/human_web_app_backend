@@ -19,11 +19,13 @@ from django.urls import path
 from human_app.views import ClientesFinanceiroAPI
 from human_app.views import ClientesFinanceiroValoresAPI
 from human_app.views import RobosAPI
+from human_app.views import FuncionariosAPI
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('financeiro/', ClientesFinanceiroAPI.as_view()),
-    path('financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),
-    path('robos/', RobosAPI.as_view()),
+    path('api/funcionarios/', FuncionariosAPI.as_view()),
+    path('api/clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
+    path('api/clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),
+    path('api/robos/', RobosAPI.as_view()),
 ]

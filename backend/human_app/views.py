@@ -2,8 +2,8 @@ from django.shortcuts import render
 from rest_framework.views import APIView, Response
 from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_201_CREATED
 from django.shortcuts import get_object_or_404
-from human_app.models import ClientesFinanceiro, ClientesFinanceiroValores, Robos
-from human_app.serializers import ClientesFinanceiroSerializer, ClientesFinanceiroValoresSerializer, RobosSerializer
+from human_app.models import *
+from human_app.serializers import *
 from faker import Faker
 
 # Create your views here.
@@ -58,3 +58,12 @@ class RobosAPI(APIView):
     def delete(self, request, format=None):
         Robos.objects.all().delete()
         return Response("Robos excluídos com sucesso", status=HTTP_200_OK)
+
+class FuncionariosAPI(APIView):
+    def get(self, request, format=None):
+        funcionarios = Funcionarios.objects.all()
+        serializer = FuncionariosSerializer(funcionarios, many=True)
+        if serializer:
+            return Response(serializer.data, status=HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)

@@ -41,7 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'human_app.apps.HumanAppConfig',
     'rest_framework', 
-    'corsheaders',
+    'corsheaders'
 ]
 
 MIDDLEWARE = [
@@ -53,6 +53,11 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
 ]
 
 ROOT_URLCONF = 'human_project.urls'

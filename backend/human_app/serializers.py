@@ -3,6 +3,7 @@ from rest_framework import serializers
 from human_app.models import ClientesFinanceiro
 from human_app.models import ClientesFinanceiroValores
 from human_app.models import Robos
+from human_app.models import Funcionarios
 
 class ClientesFinanceiroSerializer(serializers.ModelSerializer):
     class Meta:
@@ -17,4 +18,8 @@ class ClientesFinanceiroValoresSerializer(serializers.ModelSerializer):
 class RobosSerializer(serializers.ModelSerializer):
     class Meta:
        model = Robos
+
+class FuncionariosSerializer(serializers.ModelSerializer):
+    class Meta:
+       model = Funcionarios
        fields = '__all__'
