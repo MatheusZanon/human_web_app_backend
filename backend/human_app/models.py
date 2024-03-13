@@ -19,7 +19,7 @@ class ClientesFinanceiroValores(models.Model):
     cliente = models.ForeignKey(to=ClientesFinanceiro, 
                                    on_delete=models.CASCADE, 
                                    related_name='valores',
-                                   null=False, blank=False)
+                                   null=True, blank=True)
     cod_empresa = models.IntegerField(blank=True, null=True)
     convenio_farmacia = models.FloatField(blank=True, null=True)
     adiant_salarial = models.FloatField(blank=True, null=True)
@@ -57,7 +57,7 @@ class ClientesFinanceiroReembolsos(models.Model):
     cliente = models.ForeignKey(to=ClientesFinanceiro, 
                                    on_delete=models.CASCADE,
                                    related_name='reembolsos',
-                                   null=False, blank=False)
+                                   null=True, blank=True)
     descricao = models.CharField(max_length=255, blank=True, null=True)
     valor = models.FloatField(blank=True, null=True)
     mes = models.IntegerField()
