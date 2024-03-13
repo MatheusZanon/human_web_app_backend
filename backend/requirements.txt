@@ -1,5 +1,7 @@
 django
 djangorestframework
+django-cors-headers
 python-dotenv
 mysqlclient
 mysql-connector-python
+Faker
