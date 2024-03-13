@@ -1,6 +1,6 @@
 from django.shortcuts import render
 from rest_framework.views import APIView, Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_201_CREATED
 from django.shortcuts import get_object_or_404
 from human_app.models import ClientesFinanceiro, ClientesFinanceiroValores, Robos
 from human_app.serializers import ClientesFinanceiroSerializer, ClientesFinanceiroValoresSerializer, RobosSerializer
@@ -53,7 +53,7 @@ class RobosAPI(APIView):
                 serializer.save()
             else:
                 return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-        return Response("Seeding dos robos feito com sucesso", status=HTTP_200_OK)
+        return Response("Seeding dos robos feito com sucesso", status=HTTP_201_CREATED)
     
     def delete(self, request, format=None):
         Robos.objects.all().delete()
