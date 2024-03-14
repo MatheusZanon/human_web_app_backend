@@ -16,10 +16,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
-from human_app.views import ClientesFinanceiroAPI
-from human_app.views import ClientesFinanceiroValoresAPI
-from human_app.views import RobosAPI
-from human_app.views import FuncionariosAPI
+from human_app.views import *
 
 
 urlpatterns = [
@@ -28,4 +25,6 @@ urlpatterns = [
     path('api/clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
     path('api/clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),
     path('api/robos/', RobosAPI.as_view()),
+    path('api/robos/<id_robo>/', RoboAPI.as_view()),
+    path('api/robos/<id_robo>/parametros/', RobosParametrosAPI.as_view()),
 ]

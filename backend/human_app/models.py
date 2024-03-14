@@ -114,16 +114,17 @@ class Parametros(models.Model):
     FLOAT = "FLOAT"
     STRING = "STRING"
     BOOLEAN = "BOOLEAN"
+    DATE = "DATE"
 
     TIPOS = {
         (INTEGER, "INTEGER"),
         (FLOAT, "FLOAT"),
         (STRING, "STRING"),
         (BOOLEAN, "BOOLEAN"),
+        (DATE, "DATE"),
     }
 
     nome = models.CharField(max_length=255)
-    valor = models.CharField(max_length=255)
     tipo = models.CharField(max_length=255, choices=TIPOS, default=STRING)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
@@ -132,14 +133,15 @@ class Parametros(models.Model):
         db_table = 'parametros'
 
 class RobosParametros(models.Model):
-    id_robos = models.ForeignKey(to=Robos,
+    robo = models.ForeignKey(to=Robos,
                                    on_delete=models.CASCADE,
                                    related_name='parametros',
                                    null=False, blank=False)
-    id_parametros = models.ForeignKey(to=Parametros,
+    parametro = models.ForeignKey(to=Parametros,
                                    on_delete=models.CASCADE,
                                    related_name='robos',
                                    null=False, blank=False)
+    valor = models.CharField(max_length=255)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     class Meta:
