@@ -112,14 +112,14 @@ class SolicitacoesCadastro(models.Model):
 class Parametros(models.Model):
     INTEGER = "INTEGER"
     FLOAT = "FLOAT"
-    STRING = "STRING"
+    TEXT = "TEXT"
     BOOLEAN = "BOOLEAN"
     DATE = "DATE"
 
     TIPOS = {
         (INTEGER, "INTEGER"),
         (FLOAT, "FLOAT"),
-        (STRING, "STRING"),
+        (TEXT, "TEXT"),
         (BOOLEAN, "BOOLEAN"),
         (DATE, "DATE"),
     }
