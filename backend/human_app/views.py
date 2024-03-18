@@ -1,10 +1,11 @@
 from django.shortcuts import render
 from rest_framework.views import APIView, Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_201_CREATED
+from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
 from faker import Faker
+import subprocess
 
 # Create your views here.
 class ClientesFinanceiroAPI(APIView):
@@ -127,19 +128,69 @@ class RobosParametrosAPI(APIView):
         except Exception as error:
             return Response(f"{error}", status=HTTP_404_NOT_FOUND)
     
-    def post(self, request, format=None):
-        serializer = RobosParametrosSerializer(data=request.data)
+    def post(self, request, id_robo, format=None):
+        try:
+            robo = Robos.objects.get(id=id_robo)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=HTTP_404_NOT_FOUND)
 
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+        try:
+            robo_parametros = RobosParametros.objects.filter(robo=id_robo)
+
+            if not robo_parametros:
+                raise Exception("Os parâmetros do robo não foram encontrados")
+                
+            parametros_testados = []
+            for key, value in request.data.items():
+                for param in robo_parametros:
+                    parametro = Parametros.objects.get(pk=param.parametro.pk)
+                    if not parametro:
+                        raise Exception("Os parâmetros do robo não foram encontrados")
+                    parametros_testados.append(parametro.nome)
+                    if parametro.nome == key:
+                        param.valor = value
+                        param.save()
+                        return Response("Parâmetros atualizados com sucesso", status=HTTP_204_NO_CONTENT)
+                if not parametros_testados:
+                    raise Exception(f"Os parâmetros do robo não foram encontrados. Parâmetros enviados: {request.data.keys()}")
+            raise Exception(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
+        except Exception as error:
+            return Response(f"{error}", status=HTTP_404_NOT_FOUND)
         
     def delete(self, request, format=None):
         parametro = get_object_or_404(RobosParametros, pk=request.data['id'])
         parametro.delete()
         return Response(f"Parametro {parametro.nome} excluído com sucesso", status=HTTP_200_OK)
+
+class ExecutarRoboAPI(APIView):
+    def post(self, request, id_robo, format=None):
+        try:
+            robo_parametro = RobosParametrosAPI().post(request, id_robo)
+            if not robo_parametro:
+                raise Exception("Os parâmetros do robo não foram atualizados")
+            
+            parametros = []
+            for key, value in request.data.items():
+                print(f"{key}: {value}")
+                parametros.append(value)
+            
+            parametros_formatados = ' '.join(parametros)
+
+            # Ativar o ambiente virtual
+            #subprocess.run(executable='c:/Users/ACP/projetos/robo_folha_ponto/.venv/scripts/Activate.ps1', shell=True)
+
+            # Execução do robo
+            #resultado = subprocess.run(['powershell -Command "& c:/Users/ACP/projetos/robo_folha_ponto/.venv/scripts/Activate.ps1"; python c:/Users/ACP/projetos/robo_folha_ponto/robo_folha_ponto.py", {}'.format(parametros_formatados)], shell=True)
+
+            comando = 'powershell -Command "c:/Users/ACP/projetos/robo_folha_ponto/.venv/scripts/Activate.ps1; python c:/Users/ACP/projetos/robo_folha_ponto/robo_folha_ponto.py {}"'.format(parametros_formatados)
+
+            resultado = subprocess.run(comando, shell=True)
+            if resultado.returncode != 0:
+                raise Exception("O processo de execução do robo foi concluído com erro. Verifique o log para mais detalhes")
+            
+            return Response("Robo executado com sucesso", status=HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=HTTP_404_NOT_FOUND)
 
 class FuncionariosAPI(APIView):
     def get(self, request, format=None):
