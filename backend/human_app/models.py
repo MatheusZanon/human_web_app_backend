@@ -140,7 +140,7 @@ class RobosParametros(models.Model):
                                    on_delete=models.CASCADE,
                                    related_name='robos',
                                    null=False, blank=False)
-    valor = models.CharField(max_length=255)
+    valor = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
     class Meta:
