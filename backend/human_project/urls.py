@@ -21,6 +21,9 @@ from human_app.views import *
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('api/user/', User.as_view()),
+    path('api/login/', UserAuthToken.as_view()),
+    #path('api/solicitacoes_cadastro/', SolicitacoesCadastroAPI.as_view()),
     path('api/funcionarios/', FuncionariosAPI.as_view()),
     path('api/clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
     path('api/clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),

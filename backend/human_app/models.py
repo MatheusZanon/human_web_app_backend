@@ -1,6 +1,18 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 # Create your models here.
+class Funcionarios(models.Model):
+    usuario = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    rg = models.CharField(max_length=8, blank=True, null=True)
+    cpf = models.CharField(max_length=11, blank=True, null=True)
+    telefone_celular = models.CharField(max_length=25, blank=True, null=True)
+    setor = models.CharField(max_length=55)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'funcionarios'
 
 class ClientesFinanceiro(models.Model):
     nome_razao_social = models.CharField(max_length=255)
@@ -68,22 +80,6 @@ class ClientesFinanceiroReembolsos(models.Model):
     class Meta:
         db_table = 'clientes_financeiro_reembolsos'
 
-
-class Funcionarios(models.Model):
-    nome = models.CharField(max_length=255)
-    email = models.CharField(max_length=255, blank=True, null=True)
-    senha = models.CharField(max_length=64)
-    rg = models.CharField(max_length=8, blank=True, null=True)
-    cpf = models.CharField(max_length=11, blank=True, null=True)
-    telefone_celular = models.CharField(max_length=25, blank=True, null=True)
-    setor = models.CharField(max_length=55)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        db_table = 'funcionarios'
-
-
 class Robos(models.Model):
     nome = models.CharField(max_length=50, blank=True, null=True)
     categoria = models.CharField(max_length=50, blank=True, null=True)
@@ -98,7 +94,10 @@ class Robos(models.Model):
 
 
 class SolicitacoesCadastro(models.Model):
-    nome = models.CharField(max_length=255)
+    username = models.CharField(max_length=255)
+    firstname = models.CharField(max_length=255)
+    lastname = models.CharField(max_length=255)
+    cpf = models.CharField(max_length=25, blank=True, null=True)
     email = models.CharField(max_length=255, blank=True, null=True)
     senha = models.CharField(max_length=64)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)

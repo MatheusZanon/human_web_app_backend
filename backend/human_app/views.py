@@ -1,6 +1,7 @@
-from django.shortcuts import render
+from django.contrib.auth import authenticate
+from rest_framework.authtoken.models import Token
+from rest_framework import status
 from rest_framework.views import APIView, Response
-from rest_framework.status import HTTP_200_OK, HTTP_400_BAD_REQUEST, HTTP_404_NOT_FOUND, HTTP_500_INTERNAL_SERVER_ERROR, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
@@ -8,24 +9,83 @@ from faker import Faker
 import subprocess
 
 # Create your views here.
+class User(APIView):
+    def post(self, request, format=None):
+        try:
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class UserAuthToken(APIView):
+    def post(self, request, format=None):
+        try:
+            username = request.data.get("username")
+            password = request.data.get("password")
+            user = authenticate(username=username, password=password)
+            if user:
+                token, created = Token.objects.get_or_create(user=user)
+                return Response({"token": token.key}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Credenciais inválidas'}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
+         
+
+class SolicitacoesCadastroAPI(APIView):
+    def get(self, request, format=None):
+        try:
+            solicitacoes = SolicitacoesCadastro.objects.all()
+            serializer = SolicitacoesCadastroSerializer(solicitacoes, many=True)
+            if serializer:
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    def post(self, request, format=None):
+        try:
+            serializer = SolicitacoesCadastroSerializer(data=request.data)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class FuncionariosAPI(APIView):
+    def get(self, request, format=None):
+        funcionarios = Funcionarios.objects.all()
+        serializer = FuncionariosSerializer(funcionarios, many=True)
+        if serializer:
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
 class ClientesFinanceiroAPI(APIView):
     def get(self, request, format=None):
         clientes = ClientesFinanceiro.objects.all()
         serializer = ClientesFinanceiroSerializer(clientes, many=True)
         if serializer:
-            return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-        
-        
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+              
 class ClientesFinanceiroValoresAPI(APIView):
     def get(self, request, format=None):
         clientes = ClientesFinanceiroValores.objects.all()
         serializer = ClientesFinanceiroValoresSerializer(clientes, many=True)
         if serializer:
-            return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class RoboAPI(APIView):
     def get(self, request, id_robo, format=None):
@@ -49,9 +109,9 @@ class RoboAPI(APIView):
 
             robo_data["parametros"] = parametros_data
 
-            return Response(robo_data, status=HTTP_200_OK)
+            return Response(robo_data, status=status.HTTP_200_OK)
         except Robos.DoesNotExist:
-            return Response("O robo não foi encontrado", status=HTTP_404_NOT_FOUND)
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
 
 class RobosAPI(APIView):
     def get(self, request, format=None):
@@ -59,9 +119,9 @@ class RobosAPI(APIView):
         serializer = RobosSerializer(robos, many=True)
 
         if serializer:
-            return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
     def post(self, request, format=None):
         faker = Faker()
@@ -80,42 +140,42 @@ class RobosAPI(APIView):
             if serializer.is_valid():
                 serializer.save()
             else:
-                return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
-        return Response("Seeding dos robos feito com sucesso", status=HTTP_201_CREATED)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        return Response("Seeding dos robos feito com sucesso", status=status.HTTP_201_CREATED)
     
     def delete(self, request, format=None):
         Robos.objects.all().delete()
-        return Response("Robos excluídos com sucesso", status=HTTP_200_OK)
+        return Response("Robos excluídos com sucesso", status=status.HTTP_200_OK)
 
 class ParametrosAPI(APIView):
     def get(self, request, format=None):
         parametros = get_list_or_404(Parametros)
         serializer = ParametrosSerializer(parametros, many=True)
         if serializer:
-            return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def post(self, request, format=None):
         serializer = ParametrosSerializer(data=request.data)
 
         if serializer.is_valid():
             serializer.save()
-            return Response(serializer.data, status=HTTP_201_CREATED)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, format=None):
         parametro = get_object_or_404(Parametros, pk=request.data['id'])
         parametro.delete()
-        return Response(f"Parametro {parametro.nome} excluídos com sucesso", status=HTTP_200_OK)
+        return Response(f"Parametro {parametro.nome} excluídos com sucesso", status=status.HTTP_200_OK)
     
 class RobosParametrosAPI(APIView):
     def get(self, request, id_robo, format=None):
         try:
             robo = Robos.objects.get(id=id_robo)
         except Robos.DoesNotExist:
-            return Response("O robo não foi encontrado", status=HTTP_404_NOT_FOUND)
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
         
         try:
             robo_parametros = RobosParametros.objects.filter(robo=id_robo)
@@ -124,15 +184,15 @@ class RobosParametrosAPI(APIView):
                 raise Exception("Os parâmetros do robo não foram encontrados")
 
             serializer = RobosParametrosSerializer(robo_parametros, many=True)
-            return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
     
     def post(self, request, id_robo, format=None):
         try:
             robo = Robos.objects.get(id=id_robo)
         except Robos.DoesNotExist:
-            return Response("O robo não foi encontrado", status=HTTP_404_NOT_FOUND)
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
 
         try:
             robo_parametros = RobosParametros.objects.filter(robo=id_robo)
@@ -150,17 +210,17 @@ class RobosParametrosAPI(APIView):
                     if parametro.nome == key:
                         param.valor = value
                         param.save()
-                        return Response("Parâmetros atualizados com sucesso", status=HTTP_204_NO_CONTENT)
+                        return Response("Parâmetros atualizados com sucesso", status=status.HTTP_204_NO_CONTENT)
                 if not parametros_testados:
                     raise Exception(f"Os parâmetros do robo não foram encontrados. Parâmetros enviados: {request.data.keys()}")
             raise Exception(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
         except Exception as error:
-            return Response(f"{error}", status=HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
         
     def delete(self, request, format=None):
         parametro = get_object_or_404(RobosParametros, pk=request.data['id'])
         parametro.delete()
-        return Response(f"Parametro {parametro.nome} excluído com sucesso", status=HTTP_200_OK)
+        return Response(f"Parametro {parametro.nome} excluído com sucesso", status=status.HTTP_200_OK)
 
 class ExecutarRoboAPI(APIView):
     def post(self, request, id_robo, format=None):
@@ -188,15 +248,15 @@ class ExecutarRoboAPI(APIView):
             if resultado.returncode != 0:
                 raise Exception("O processo de execução do robo foi concluído com erro. Verifique o log para mais detalhes")
             
-            return Response("Robo executado com sucesso", status=HTTP_200_OK)
+            return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 
 class FuncionariosAPI(APIView):
     def get(self, request, format=None):
         funcionarios = Funcionarios.objects.all()
         serializer = FuncionariosSerializer(funcionarios, many=True)
         if serializer:
-            return Response(serializer.data, status=HTTP_200_OK)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
