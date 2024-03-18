@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'human_app.apps.HumanAppConfig',
     'rest_framework', 
+    'rest_framework.authtoken',
     'corsheaders'
 ]
 
@@ -85,12 +86,12 @@ WSGI_APPLICATION = 'human_project.wsgi.application'
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 load_dotenv()
 
-engine = os.getenv('ENGINE')
-name = os.getenv('NAME')
-user = os.getenv('USER')
-password = os.getenv('PASSWORD')
-host = os.getenv('HOST')
-port = os.getenv('PORT')
+engine = os.getenv('DB_ENGINE')
+name = os.getenv('DB_NAME')
+user = os.getenv('DB_USER')
+password = os.getenv('DB_PASS')
+host = os.getenv('DB_HOST')
+port = os.getenv('DB_PORT')
 
 DATABASES = {
     'default': {
