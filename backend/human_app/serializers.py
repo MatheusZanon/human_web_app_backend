@@ -20,16 +20,13 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
-
-class SolicitacoesCadastroSerializer(serializers.ModelSerializer):
-    class Meta:
-       model = SolicitacoesCadastro
-       fields = '__all__'
-
+    
 class FuncionariosSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
     class Meta:
        model = Funcionarios
-       fields = '__all__'
+       fields = ['user', 'rg', 'cpf', 'telefone_celular']
 
 class ClientesFinanceiroSerializer(serializers.ModelSerializer):
     class Meta:

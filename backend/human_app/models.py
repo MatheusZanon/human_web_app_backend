@@ -3,11 +3,10 @@ from django.contrib.auth.models import User
 
 # Create your models here.
 class Funcionarios(models.Model):
-    usuario = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
     rg = models.CharField(max_length=8, blank=True, null=True)
     cpf = models.CharField(max_length=11, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
-    setor = models.CharField(max_length=55)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
@@ -64,7 +63,6 @@ class ClientesFinanceiroValores(models.Model):
     class Meta:
         db_table = 'clientes_financeiro_valores'
 
-
 class ClientesFinanceiroReembolsos(models.Model):
     cliente = models.ForeignKey(to=ClientesFinanceiro, 
                                    on_delete=models.CASCADE,
@@ -91,22 +89,6 @@ class Robos(models.Model):
 
     class Meta:
         db_table = 'robos'
-
-
-class SolicitacoesCadastro(models.Model):
-    username = models.CharField(max_length=255)
-    firstname = models.CharField(max_length=255)
-    lastname = models.CharField(max_length=255)
-    cpf = models.CharField(max_length=25, blank=True, null=True)
-    email = models.CharField(max_length=255, blank=True, null=True)
-    senha = models.CharField(max_length=64)
-    telefone_celular = models.CharField(max_length=25, blank=True, null=True)
-    setor = models.CharField(max_length=55)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
-
-    class Meta:
-        db_table = 'solicitacoes_cadastro'
 
 class Parametros(models.Model):
     INTEGER = "INTEGER"

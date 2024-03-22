@@ -1,7 +1,10 @@
-from django.contrib.auth import authenticate
-from rest_framework.authtoken.models import Token
 from rest_framework import status
 from rest_framework.views import APIView, Response
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import permission_classes
+from rest_framework_simplejwt.tokens import UntypedToken
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from django.contrib.auth.models import User 
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
@@ -12,63 +15,46 @@ import subprocess
 class User(APIView):
     def post(self, request, format=None):
         try:
-            serializer = UserSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            user = None
+            user_serializer = UserSerializer(data=request.data)
+            if user_serializer.is_valid():
+                user = user_serializer.save()
+                funcionario_serializer = FuncionariosSerializer(data={
+                    'user': user.id, 'rg': request.data['rg'], 'cpf': request.data['cpf'], 'telefone_celular': request.data['telefone_celular']})
+                if funcionario_serializer.is_valid():
+                    funcionario_serializer.save()
+                    return Response(user_serializer.data, status=status.HTTP_201_CREATED)
+                else:
+                    user.delete()
+                    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 
-
-class UserAuthToken(APIView):
-    def post(self, request, format=None):
-        try:
-            username = request.data.get("username")
-            password = request.data.get("password")
-            user = authenticate(username=username, password=password)
-            if user:
-                token, created = Token.objects.get_or_create(user=user)
-                return Response({"token": token.key}, status=status.HTTP_200_OK)
-            else:
-                return Response({'error': 'Credenciais inválidas'}, status=status.HTTP_404_NOT_FOUND)
-        except Exception as error:
-            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR) 
-         
-
-class SolicitacoesCadastroAPI(APIView):
+class VerifyToken(APIView):
     def get(self, request, format=None):
-        try:
-            solicitacoes = SolicitacoesCadastro.objects.all()
-            serializer = SolicitacoesCadastroSerializer(solicitacoes, many=True)
-            if serializer:
-                return Response(serializer.data, status=status.HTTP_200_OK)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as error:
-            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
-    def post(self, request, format=None):
-        try:
-            serializer = SolicitacoesCadastroSerializer(data=request.data)
-            if serializer.is_valid():
-                serializer.save()
-                return Response(serializer.data, status=status.HTTP_201_CREATED)
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except Exception as error:
-            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        token = request.META.get('HTTP_AUTHORIZATION', None)
+        if token is None:
+            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
 
+        token = token.split(" ")[1]  # Remove "Bearer" do token
+        try:
+            UntypedToken(token)
+            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
+        except (InvalidToken, TokenError) as e:
+            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+
+
+@permission_classes([IsAuthenticated])
 class FuncionariosAPI(APIView):
     def get(self, request, format=None):
-        funcionarios = Funcionarios.objects.all()
-        serializer = FuncionariosSerializer(funcionarios, many=True)
-        if serializer:
+        try:
+            funcionario = Funcionarios.objects.get(user=request.user)
+            serializer = FuncionariosSerializer(funcionario)
             return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        
+        except Funcionarios.DoesNotExist:
+            return Response({'error': 'Funcionário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
 class ClientesFinanceiroAPI(APIView):
     def get(self, request, format=None):
         clientes = ClientesFinanceiro.objects.all()
@@ -252,11 +238,4 @@ class ExecutarRoboAPI(APIView):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 
-class FuncionariosAPI(APIView):
-    def get(self, request, format=None):
-        funcionarios = Funcionarios.objects.all()
-        serializer = FuncionariosSerializer(funcionarios, many=True)
-        if serializer:
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+

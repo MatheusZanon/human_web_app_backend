@@ -16,19 +16,28 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from human_app.views import *
 
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+
+    # Autenticação
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/token/verify/', VerifyToken.as_view(), name='token_verify'),
+
+    # Usuários
     path('api/user/', User.as_view()),
-    path('api/login/', UserAuthToken.as_view()),
-    #path('api/solicitacoes_cadastro/', SolicitacoesCadastroAPI.as_view()),
-    path('api/funcionarios/', FuncionariosAPI.as_view()),
-    path('api/clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
-    path('api/clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),
+
+    # Robôs
     path('api/robos/', RobosAPI.as_view()),
     path('api/robos/<id_robo>/', RoboAPI.as_view()),
     path('api/robos/<id_robo>/parametros/', RobosParametrosAPI.as_view()),
     path('api/robos/<id_robo>/executar/', ExecutarRoboAPI.as_view()),
+
+    # Clientes Financeiro
+    path('api/clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
+    path('api/clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),
 ]

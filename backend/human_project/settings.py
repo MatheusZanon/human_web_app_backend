@@ -10,9 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
-from pathlib import Path
 import os
+from pathlib import Path
 from dotenv import load_dotenv
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -41,7 +42,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'human_app.apps.HumanAppConfig',
     'rest_framework', 
-    'rest_framework.authtoken',
     'corsheaders'
 ]
 
@@ -54,11 +54,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-]
-
-CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173'
 ]
 
 ROOT_URLCONF = 'human_project.urls'
@@ -147,7 +142,21 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    'http://localhost:5173',
+    'http://127.0.0.1:5173'
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+}
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=20),  # Exemplo: token de acesso válido por 5 minutos
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),  # Exemplo: token de atualização válido por 1 dia
+    'ROTATE_REFRESH_TOKENS': True,  # Se verdadeiro, um novo token de atualização será gerado ao atualizar
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
