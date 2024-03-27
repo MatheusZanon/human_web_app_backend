@@ -28,6 +28,13 @@ class FuncionariosSerializer(serializers.ModelSerializer):
        model = Funcionarios
        fields = ['user', 'rg', 'cpf', 'telefone_celular']
 
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        user_representation = representation.pop('user')
+        for key in user_representation:
+            representation[key] = user_representation[key]
+        return representation
+
 class ClientesFinanceiroSerializer(serializers.ModelSerializer):
     class Meta:
        model = ClientesFinanceiro

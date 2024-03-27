@@ -28,8 +28,11 @@ urlpatterns = [
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', VerifyToken.as_view(), name='token_verify'),
 
-    # Usuários
-    path('api/user/', User.as_view()),
+    # User
+    path('api/user/', UserAPI.as_view()),
+
+    # Funcionários
+    path('api/funcionarios/', FuncionariosAPI.as_view()),
 
     # Robôs
     path('api/robos/', RobosAPI.as_view()),

@@ -1,10 +1,10 @@
 from rest_framework import status
 from rest_framework.views import APIView, Response
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from django.contrib.auth.models import User 
+from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
@@ -12,21 +12,40 @@ from faker import Faker
 import subprocess
 
 # Create your views here.
-class User(APIView):
+class UserAPI(APIView):
+    def get(self, request, format=None):
+        try:
+            user = Funcionarios.objects.get(user=request.user)
+            serializer = FuncionariosSerializer(user)
+            if serializer:
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
     def post(self, request, format=None):
+        username = request.data.get('username')
+        email = request.data.get('email')
+        if User.objects.filter(username=username).exists():
+            return Response({'error': 'Esse nome de usuário já existe.'}, status=status.HTTP_400_BAD_REQUEST)
+        elif User.objects.filter(email=email).exists():
+            return Response({'error': 'Esse email já existe.'}, status=status.HTTP_400_BAD_REQUEST) 
+
         try:
             user = None
             user_serializer = UserSerializer(data=request.data)
             if user_serializer.is_valid():
                 user = user_serializer.save()
-                funcionario_serializer = FuncionariosSerializer(data={
-                    'user': user.id, 'rg': request.data['rg'], 'cpf': request.data['cpf'], 'telefone_celular': request.data['telefone_celular']})
-                if funcionario_serializer.is_valid():
-                    funcionario_serializer.save()
-                    return Response(user_serializer.data, status=status.HTTP_201_CREATED)
-                else:
-                    user.delete()
-                    return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                funcionario_data = {
+                    'rg': request.data.get('rg'),
+                    'cpf': request.data.get('cpf'),
+                    'telefone_celular': request.data.get('telefone_celular'),
+                }
+                funcionario = Funcionarios.objects.create(user=user, **funcionario_data)
+                funcionario.save()
+                return Response(user_serializer.data, status=status.HTTP_201_CREATED)
+            else:
+                print("USER SERIALIZER INVALIDO")
+                return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -49,11 +68,12 @@ class VerifyToken(APIView):
 class FuncionariosAPI(APIView):
     def get(self, request, format=None):
         try:
-            funcionario = Funcionarios.objects.get(user=request.user)
-            serializer = FuncionariosSerializer(funcionario)
+            funcionarios = Funcionarios.objects.all()
+            serializer = FuncionariosSerializer(funcionarios, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Funcionarios.DoesNotExist:
             return Response({'error': 'Funcionário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
 
 class ClientesFinanceiroAPI(APIView):
     def get(self, request, format=None):
@@ -72,6 +92,7 @@ class ClientesFinanceiroValoresAPI(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 class RoboAPI(APIView):
     def get(self, request, id_robo, format=None):
@@ -98,6 +119,7 @@ class RoboAPI(APIView):
             return Response(robo_data, status=status.HTTP_200_OK)
         except Robos.DoesNotExist:
             return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+
 
 class RobosAPI(APIView):
     def get(self, request, format=None):
@@ -132,6 +154,7 @@ class RobosAPI(APIView):
     def delete(self, request, format=None):
         Robos.objects.all().delete()
         return Response("Robos excluídos com sucesso", status=status.HTTP_200_OK)
+
 
 class ParametrosAPI(APIView):
     def get(self, request, format=None):
