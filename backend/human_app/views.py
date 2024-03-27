@@ -7,10 +7,6 @@ from human_app.models import *
 from human_app.serializers import *
 from faker import Faker
 import subprocess
-from datetime import datetime
-from time import sleep
-import requests
-import json
 
 # Create your views here.
 class User(APIView):
@@ -98,19 +94,24 @@ class RoboAPI(APIView):
 
             serializer = RobosSerializer(robo)
 
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            robo_data = serializer.data
+
+            robo_parametros = RobosParametros.objects.filter(robo=id_robo)
+            if not robo_parametros:
+                raise Exception("Os parâmetros do robo não foram encontrados")
+            
+            parametros_serializer = RobosParametrosSerializer(robo_parametros, many=True)
+            
+            if not parametros_serializer:
+                raise Exception("Os parâmetros do robo não foram encontrados")
+            
+            parametros_data = parametros_serializer.data
+
+            robo_data["parametros"] = parametros_data
+
+            return Response(robo_data, status=status.HTTP_200_OK)
         except Robos.DoesNotExist:
             return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
-    
-    def put(self, request, id_robo, format=None):
-        robo = Robos.objects.get(id=id_robo)
-        serializer = RobosSerializer(robo, data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class RobosAPI(APIView):
     def get(self, request, format=None):
@@ -180,7 +181,7 @@ class RobosParametrosAPI(APIView):
             robo_parametros = RobosParametros.objects.filter(robo=id_robo)
 
             if not robo_parametros:
-                return Response("O robo não possui parâmetros definidos", status=status.HTTP_204_NO_CONTENT)
+                raise Exception("Os parâmetros do robo não foram encontrados")
 
             serializer = RobosParametrosSerializer(robo_parametros, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
@@ -221,77 +222,33 @@ class RobosParametrosAPI(APIView):
         parametro.delete()
         return Response(f"Parametro {parametro.nome} excluído com sucesso", status=status.HTTP_200_OK)
 
-class RotinasAPI(APIView):
-    def get(self, request, id_robo, format=None):
-        rotinas = get_list_or_404(Rotinas, robo=id_robo)
-        serializer = RotinasSerializer(rotinas, many=True)
-        if serializer:
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-    def post(self, request, format=None):
-        serializer = RotinasSerializer(data=request.data)
-
-        if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_201_CREATED)
-        else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
 class ExecutarRoboAPI(APIView):
     def post(self, request, id_robo, format=None):
         try:
-            robo = Robos.objects.get(id=id_robo)
-            if not robo:
-                raise Exception("O robo não foi encontrado")
+            robo_parametro = RobosParametrosAPI().post(request, id_robo)
+            if not robo_parametro:
+                raise Exception("Os parâmetros do robo não foram atualizados")
             
-            parametros = {}
+            parametros = []
             for key, value in request.data.items():
-                parametros[key] = value
-
-            robo_parametros = RobosParametros.objects.filter(robo=id_robo)
-
-            if not robo_parametros:
-                raise Exception("O robo não possui parâmetros definidos")
+                print(f"{key}: {value}")
+                parametros.append(value)
             
-            parametros_testados = []
-            for key, value in request.data.items():
-                for param in robo_parametros:
-                    parametro = Parametros.objects.get(pk=param.parametro.pk)
-                    if not parametro:
-                        raise Exception("Os parâmetros do robo não foram encontrados")
-                    parametros_testados.append(parametro.nome)
-                    if parametro.nome == key:
-                        param.valor = value
-                        param.save()
-                        print(f"Parametro {key} atualizado")
-                if not parametros_testados:
-                    raise Exception(f"Os parâmetros do robo não foram encontrados. Parâmetros enviados: {request.data.keys()}")
-            if param in parametros_testados != request.data.keys():
-                print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
+            parametros_formatados = ' '.join(parametros)
 
-            nome_robo = robo.nome.lower().replace(" ", "_")
+            # Ativar o ambiente virtual
+            #subprocess.run(executable='c:/Users/ACP/projetos/robo_folha_ponto/.venv/scripts/Activate.ps1', shell=True)
 
-            script_path = f"c:/Users/ACP/projetos/robo_{nome_robo}"
-            robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
+            # Execução do robo
+            #resultado = subprocess.run(['powershell -Command "& c:/Users/ACP/projetos/robo_folha_ponto/.venv/scripts/Activate.ps1"; python c:/Users/ACP/projetos/robo_folha_ponto/robo_folha_ponto.py", {}'.format(parametros_formatados)], shell=True)
 
-            sleep(3)
-            parametros_json = json.dumps(parametros)
-            print(f"Req realizada")
-            resultado_request = requests.post(f"http://127.0.0.1:5000/", data=parametros_json, headers={'Content-Type': 'application/json'})
+            comando = 'powershell -Command "c:/Users/ACP/projetos/robo_folha_ponto/.venv/scripts/Activate.ps1; python c:/Users/ACP/projetos/robo_folha_ponto/robo_folha_ponto.py {}"'.format(parametros_formatados)
 
-            if resultado_request.status_code == 200:
-                robo.execucoes += 1
-                robo.ultima_execucao = datetime.now()
-                robo.save()
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
-            else:
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
+            resultado = subprocess.run(comando, shell=True)
+            if resultado.returncode != 0:
+                raise Exception("O processo de execução do robo foi concluído com erro. Verifique o log para mais detalhes")
+            
+            return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 

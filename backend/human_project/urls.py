@@ -30,6 +30,5 @@ urlpatterns = [
     path('api/robos/', RobosAPI.as_view()),
     path('api/robos/<id_robo>/', RoboAPI.as_view()),
     path('api/robos/<id_robo>/parametros/', RobosParametrosAPI.as_view()),
-    path('api/robos/<id_robo>/rotinas/', RotinasAPI.as_view()),
     path('api/robos/<id_robo>/executar/', ExecutarRoboAPI.as_view()),
 ]

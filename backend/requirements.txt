@@ -6,4 +6,3 @@ pymysql
 mysqlclient
 mysql-connector-python
 Faker
-requests
