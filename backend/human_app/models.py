@@ -145,3 +145,15 @@ class RobosParametros(models.Model):
     updated_at = models.DateTimeField(blank=True, null=True)
     class Meta:
         db_table = 'robos_parametros'
+
+class Rotinas(models.Model):
+    nome = models.CharField(max_length=255)
+    robo = models.ForeignKey(to=Robos,
+                            on_delete=models.CASCADE,
+                            related_name='rotinas',
+                            null=False, blank=False)
+    created_at = models.DateTimeField(blank=True, null=True)
+    updated_at = models.DateTimeField(blank=True, null=True)
+
+    class Meta:
+        db_table = 'rotinas'
