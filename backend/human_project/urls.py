@@ -38,7 +38,9 @@ urlpatterns = [
     path('api/robos/', RobosAPI.as_view()),
     path('api/robos/<id_robo>/', RoboAPI.as_view()),
     path('api/robos/<id_robo>/parametros/', RobosParametrosAPI.as_view()),
-    path('api/robos/<id_robo>/rotinas/', RotinasAPI.as_view()),
+    path('api/robos/<id_robo>/parametros/new/', ParametrosAPI.as_view()),
+    path('api/robos/<id_robo>/rotinas/', RotinasGetAPI.as_view()),
+    path('api/robos/<id_robo>/rotinas/new/', RotinasPostAPI.as_view()),
     path('api/robos/<id_robo>/executar/', ExecutarRoboAPI.as_view()),
 
     # Clientes Financeiro

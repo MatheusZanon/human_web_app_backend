@@ -4,7 +4,7 @@ from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group, Permission
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
@@ -22,7 +22,18 @@ class UserAPI(APIView):
             user = Funcionarios.objects.get(user=request.user)
             serializer = FuncionariosSerializer(user)
             if serializer:
-                return Response(serializer.data, status=status.HTTP_200_OK)
+                user_data = serializer.data
+
+                groups = [group.name for group in Group.objects.filter(user=request.user).all()]
+                permissionsQuery = [group.permissions.all() for group in Group.objects.filter(user=request.user).all()]
+                permissions: list
+                for permission in permissionsQuery:
+                    permissions = [permission.name for permission in permission]
+
+                user_data['groups'] = groups
+                user_data['permissions'] = permissions
+                del user_data['user_permissions']
+                return Response(user_data, status=status.HTTP_200_OK)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -74,7 +85,16 @@ class FuncionariosAPI(APIView):
         try:
             funcionarios = Funcionarios.objects.all()
             serializer = FuncionariosSerializer(funcionarios, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            if serializer:
+                funcionarios_data = serializer.data
+                index = 0
+                for funcionario in funcionarios_data:
+                    groups = [group.name for group in Group.objects.filter(user=funcionario.get('id')).all()]
+                    funcionario['groups'] = groups
+                    del funcionario['user_permissions']
+                    funcionarios_data[index] = funcionario
+                    index += 1
+                return Response(funcionarios_data, status=status.HTTP_200_OK)
         except Funcionarios.DoesNotExist:
             return Response({'error': 'Funcionário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -118,6 +138,31 @@ class RoboAPI(APIView):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def delete(self, request, id_robo, format=None):
+        try:
+            # Verificar se o robô existe
+            robo = Robos.objects.get(id=id_robo)
+        except Robos.DoesNotExist:
+            return Response("Robô não encontrado", status=status.HTTP_404_NOT_FOUND)
+        
+        # Excluir os parâmetros relacionados ao robô
+        parametros_robo = RobosParametros.objects.filter(robo=robo)
+        
+        parametros_ids = []
+        for parametro_robo in parametros_robo:
+            parametros_ids.append(parametro_robo.parametro)
+
+        parametros_robo.delete()
+        
+        for parametro_id in parametros_ids:
+            parametro = Parametros.objects.get(id=parametro_id.id)
+            print(parametro.nome)
+            parametro.delete()
+        # Excluir o robô
+        robo.delete()
+
+        return Response("Robô e seus parâmetros associados foram deletados com sucesso", status=status.HTTP_204_NO_CONTENT)
 
 
 class RobosAPI(APIView):
@@ -131,24 +176,12 @@ class RobosAPI(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         
     def post(self, request, format=None):
-        faker = Faker()
-
-        for _ in range(10):
-            serializer = RobosSerializer(
-                data={
-                    'nome': faker.name(),
-                    'categoria': faker.word(),
-                    'descricao': faker.text(),
-                    'execucoes': faker.random_int(),
-                    'ultima_execucao': faker.date(),
-                }
-            )
-
-            if serializer.is_valid():
-                serializer.save()
-            else:
-                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        return Response("Seeding dos robos feito com sucesso", status=status.HTTP_201_CREATED)
+        serializer = RobosSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, format=None):
         Robos.objects.all().delete()
@@ -164,11 +197,21 @@ class ParametrosAPI(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    def post(self, request, format=None):
+    def post(self, request, id_robo, format=None):
         serializer = ParametrosSerializer(data=request.data)
 
         if serializer.is_valid():
             serializer.save()
+
+            robo = Robos.objects.get(id=id_robo)
+            parametro = Parametros.objects.get(id=serializer.data['id'])
+
+            robo_parametro = RobosParametros.objects.create(
+                robo=robo,
+                parametro=parametro
+            )
+
+            robo_parametro.save()
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -230,7 +273,7 @@ class RobosParametrosAPI(APIView):
         parametro.delete()
         return Response(f"Parametro {parametro.nome} excluído com sucesso", status=status.HTTP_200_OK)
 
-class RotinasAPI(APIView):
+class RotinasGetAPI(APIView):
     def get(self, request, id_robo, format=None):
         rotinas = get_list_or_404(Rotinas, robo=id_robo)
         serializer = RotinasSerializer(rotinas, many=True)
@@ -239,8 +282,16 @@ class RotinasAPI(APIView):
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    def post(self, request, format=None):
-        serializer = RotinasSerializer(data=request.data)
+class RotinasPostAPI(APIView):
+    def post(self, request, id_robo, format=None):
+        robo = Robos.objects.get(id=id_robo)
+
+        if not robo:
+            raise Exception("O robo não foi encontrado")
+        
+        req_data = request.data
+        req_data['robo'] = id_robo
+        serializer = RotinasSerializer(data=req_data)
 
         if serializer.is_valid():
             serializer.save()
@@ -287,11 +338,10 @@ class ExecutarRoboAPI(APIView):
 
             sleep(3)
             parametros_json = json.dumps(parametros)
-            print(f"Req realizada")
             resultado_request = requests.post(f"http://127.0.0.1:5000/", data=parametros_json, headers={'Content-Type': 'application/json'})
-
             if resultado_request.status_code == 200:
-                robo.execucoes += 1
+                print(f"Req concluída")
+                robo.execucoes = robo.execucoes + 1 if robo.execucoes else 1
                 robo.ultima_execucao = datetime.now()
                 robo.save()
                 print(f"{resultado_request.text}")

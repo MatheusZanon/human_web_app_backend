@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from human_app.models import *
-from django.contrib.auth.models import User
+from django.contrib.auth.models import User, Group
 
 # Create your serializers here.
 class UserSerializer(serializers.ModelSerializer):
