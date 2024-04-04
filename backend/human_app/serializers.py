@@ -61,11 +61,6 @@ class RobosParametrosSerializer(serializers.ModelSerializer):
        model = RobosParametros
        fields = '__all__'
 
-class ExecutarRoboSerializer(serializers.ModelSerializer):
-    class Meta:
-       model = RobosParametros
-       fields = '__all__'
-
 class RotinasSerializer(serializers.ModelSerializer):
     class Meta:
        model = Rotinas

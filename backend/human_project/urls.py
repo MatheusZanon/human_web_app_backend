@@ -15,33 +15,25 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from human_app.views import *
 
 
+router = DefaultRouter()
+
+router.register(r'funcionarios', FuncionarioViewset)
+router.register(r'clientes_financeiro', ClientesFinanceiroViewset)
+router.register(r'clientes_financeiro_valores', ClientesFinanceiroValoresViewset)
+router.register(r'robos', RobosViewset)
+
 urlpatterns = [
+    path('api/', include(router.urls)),
     path('admin/', admin.site.urls),
 
     # Autenticação
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', VerifyToken.as_view(), name='token_verify'),
-
-    # User
-    path('api/user/', UserAPI.as_view()),
-
-    # Funcionários
-    path('api/funcionarios/', FuncionariosAPI.as_view()),
-
-    # Robôs
-    path('api/robos/', RobosAPI.as_view()),
-    path('api/robos/<id_robo>/', RoboAPI.as_view()),
-    path('api/robos/<id_robo>/parametros/', RobosParametrosAPI.as_view()),
-    path('api/robos/<id_robo>/rotinas/', RotinasAPI.as_view()),
-    path('api/robos/<id_robo>/executar/', ExecutarRoboAPI.as_view()),
-
-    # Clientes Financeiro
-    path('api/clientes_financeiro/', ClientesFinanceiroAPI.as_view()),
-    path('api/clientes_financeiro_valores/', ClientesFinanceiroValoresAPI.as_view()),
 ]
