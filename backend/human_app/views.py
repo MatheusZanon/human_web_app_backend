@@ -190,28 +190,3 @@ class RobosViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
         
-    
-class RobosParametrosAPI(APIView):
-    def get(self, request, id_robo, format=None):
-        try:
-            robo = Robos.objects.get(id=id_robo)
-        except Robos.DoesNotExist:
-            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
-        
-        try:
-            robo_parametros = RobosParametros.objects.filter(robo=id_robo)
-
-            if not robo_parametros:
-                return Response("O robo não possui parâmetros definidos", status=status.HTTP_204_NO_CONTENT)
-
-            serializer = RobosParametrosSerializer(robo_parametros, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
-        
-    def delete(self, request, format=None):
-        parametro = get_object_or_404(RobosParametros, pk=request.data['id'])
-        parametro.delete()
-        return Response(f"Parametro {parametro.nome} excluído com sucesso", status=status.HTTP_200_OK)
-
-
