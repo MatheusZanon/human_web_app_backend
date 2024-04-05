@@ -134,10 +134,10 @@ class Migration(migrations.Migration):
             fields=[
                 ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
                 ('robo', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='parametros', to='human_app.robos')),
+                ('parametro', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='robos', to='human_app.parametros')),
                 ('valor', models.CharField(blank=True, max_length=255, null=True)),
                 ('created_at', models.DateTimeField(blank=True, null=True)),
                 ('updated_at', models.DateTimeField(blank=True, null=True)),
-                ('parametro', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='robos', to='human_app.parametros')),
             ],
             options={
                 'db_table': 'robos_parametros',

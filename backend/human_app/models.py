@@ -55,8 +55,8 @@ class ClientesFinanceiroValores(models.Model):
     total_fatura = models.FloatField(blank=True, null=True)
     mes = models.IntegerField()
     ano = models.IntegerField()
-    anexo_enviado = models.IntegerField()
-    relatorio_enviado = models.IntegerField(blank=True, null=True)
+    anexo_enviado = models.IntegerField(default=0)
+    relatorio_enviado = models.IntegerField(default=0)
     created_at = models.DateTimeField(blank=True, null=True)
     updated_at = models.DateTimeField(blank=True, null=True)
 
