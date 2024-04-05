@@ -92,8 +92,32 @@ class RobosViewset(viewsets.ModelViewSet):
     queryset = Robos.objects.all()    
     serializer_class = RobosSerializer
 
-    @action(detail=True, methods=['get'], url_path='parametros')
-    def parametros(self, request, pk=None):
+    @action(detail=True, methods=['post'], url_path='parametros/criar')
+    def criar_parametro(self, request, pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            parametro_serializer = ParametrosSerializer(data=request.data)
+
+            if not parametro_serializer.is_valid():
+                raise Exception(parametro_serializer.errors)
+            
+            parametro_serializer.save()
+
+            robo_parametro_serializer = RobosParametrosSerializer(data={'robo': robo.id, 'parametro': parametro_serializer.data['id']})
+
+            if not robo_parametro_serializer.is_valid():
+                raise Exception(robo_parametro_serializer.errors)
+
+            robo_parametro_serializer.save()
+            return Response(f"Parâmetro criado com sucesso", status=status.HTTP_201_CREATED)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+        
+    @action(detail=True, methods=['get'], url_path='parametros/listar')
+    def listar_parametros(self, request, pk=None):
         try:
             robo = Robos.objects.get(id=pk)
         except Robos.DoesNotExist:
@@ -107,9 +131,9 @@ class RobosViewset(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
-        
-    @action(detail=True, methods=['post'], url_path='parametros')
-    def salvar_parametros(self, request, pk=None):
+
+    @action(detail=True, methods=['put'], url_path='parametros/atualizar')
+    def atualizar_parametros(self, request, pk=None):
         try:
             robo = Robos.objects.get(id=pk)
         except Robos.DoesNotExist:
@@ -137,6 +161,34 @@ class RobosViewset(viewsets.ModelViewSet):
             raise Exception(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=True, methods=['delete'], url_path='parametros/excluir/(?P<param_pk>[^/.]+)')
+    def excluir_parametro(self, request, pk=None, param_pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            robo_parametros = RobosParametros.objects.filter(robo=pk)
+            if not robo_parametros:
+                raise Exception("O parâmetro do robo não foi encontrado")
+            
+            parametro = None
+            for param in robo_parametros:
+                print(param.pk == int(param_pk))
+                if param.pk == int(param_pk):
+                    parametro = Parametros.objects.get(pk=param.parametro.pk)
+                    print(parametro.nome)
+                    break
+
+            if not parametro:
+                raise Exception("O parâmetro do robo não foi encontrado")
+
+            parametro.delete()
+            param.delete()
+            return Response("Parâmetro excluído com sucesso", status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=True, methods=['get'], url_path='rotinas')
     def rotinas(self, request, pk=None):
@@ -146,6 +198,26 @@ class RobosViewset(viewsets.ModelViewSet):
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['post'], url_path='rotinas/criar')
+    def criar_rotina(self, request, pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            request_data = request.data
+            request_data['robo'] = pk
+            serializer = RotinasSerializer(data=request_data)
+
+            if not serializer.is_valid():
+                raise Exception(serializer.errors)
+            
+            serializer.save(robo=robo)
+
+            return Response(f"Rotina criada com sucesso", status=status.HTTP_201_CREATED)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
         
     @action(detail=True, methods=['post'], url_path='executar')
     def executar_robo(self, request, pk=None):
@@ -164,7 +236,7 @@ class RobosViewset(viewsets.ModelViewSet):
                 raise Exception("O robo não possui parâmetros definidos")
             
             parametros_testados = []
-            for key, value in request.data.items():
+            for key, value in parametros:
                 for param in robo_parametros:
                     parametro = Parametros.objects.get(pk=param.parametro.pk)
                     if not parametro:
