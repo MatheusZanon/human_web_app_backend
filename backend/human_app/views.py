@@ -77,6 +77,24 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiroValores.objects.all()    
     serializer_class = ClientesFinanceiroValoresSerializer
 
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='vales_sst')
+    def vales_sst(self, request):
+        try:
+            vales_sst = ClientesFinanceiroValores.objects.all()
+            serializer = ClientesFinanceiroValesSSTSerializer(vales_sst, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='reembolsos')
+    def reembolsos(self, request):
+        try:
+            reembolsos = ClientesFinanceiroReembolsos.objects.all()
+            serializer = ClientesFinanceiroReembolsosSerializer(reembolsos, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+
 class RobosViewset(viewsets.ModelViewSet):
     queryset = Robos.objects.all()    
     serializer_class = RobosSerializer

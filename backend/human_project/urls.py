@@ -25,7 +25,7 @@ router = DefaultRouter()
 
 router.register(r'funcionarios', FuncionarioViewset)
 router.register(r'clientes_financeiro', ClientesFinanceiroViewset)
-router.register(r'clientes_financeiro_valores', ClientesFinanceiroValoresViewset)
+router.register(r'financeiro_valores', ClientesFinanceiroValoresViewset)
 router.register(r'robos', RobosViewset)
 
 urlpatterns = [

@@ -7,8 +7,8 @@ class Funcionarios(models.Model):
     rg = models.CharField(max_length=8, blank=True, null=True)
     cpf = models.CharField(max_length=11, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'funcionarios'
@@ -20,8 +20,8 @@ class ClientesFinanceiro(models.Model):
     email = models.CharField(max_length=255, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
     regiao = models.CharField(max_length=45)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'clientes_financeiro'
@@ -57,8 +57,8 @@ class ClientesFinanceiroValores(models.Model):
     ano = models.IntegerField()
     anexo_enviado = models.IntegerField(default=0)
     relatorio_enviado = models.IntegerField(default=0)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'clientes_financeiro_valores'
@@ -72,8 +72,8 @@ class ClientesFinanceiroReembolsos(models.Model):
     valor = models.FloatField(blank=True, null=True)
     mes = models.IntegerField()
     ano = models.IntegerField()
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'clientes_financeiro_reembolsos'
@@ -84,8 +84,8 @@ class Robos(models.Model):
     descricao = models.CharField(max_length=255, blank=True, null=True)
     execucoes = models.IntegerField(blank=True, null=True)
     ultima_execucao = models.DateField(blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'robos'
@@ -107,8 +107,8 @@ class Parametros(models.Model):
 
     nome = models.CharField(max_length=255)
     tipo = models.CharField(max_length=255, choices=TIPOS, default=TEXT)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'parametros'
@@ -123,8 +123,8 @@ class RobosParametros(models.Model):
                                    related_name='robos',
                                    null=False, blank=False)
     valor = models.CharField(max_length=255, blank=True, null=True)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     class Meta:
         db_table = 'robos_parametros'
 
@@ -134,8 +134,8 @@ class Rotinas(models.Model):
                             on_delete=models.CASCADE,
                             related_name='rotinas',
                             null=False, blank=False)
-    created_at = models.DateTimeField(blank=True, null=True)
-    updated_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         db_table = 'rotinas'

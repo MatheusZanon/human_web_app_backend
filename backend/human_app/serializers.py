@@ -20,7 +20,7 @@ class UserSerializer(serializers.ModelSerializer):
         user.set_password(validated_data['password'])
         user.save()
         return user
-    
+
 class FuncionariosSerializer(serializers.ModelSerializer):
     user = UserSerializer()
 
@@ -44,6 +44,35 @@ class ClientesFinanceiroValoresSerializer(serializers.ModelSerializer):
     class Meta:
        model = ClientesFinanceiroValores
        fields = '__all__' 
+
+class ClientesFinanceiroValesSSTSerializer(serializers.ModelSerializer):
+    cliente = ClientesFinanceiroSerializer()
+    
+    class Meta:
+       model = ClientesFinanceiroValores
+       fields = ['id', 'cliente', 'vale_transporte', 'assinat_eletronica', 'vale_refeicao', 'mensal_ponto_elet', 'saude_seguranca_trabalho']
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        cliente_representation = representation.pop('cliente')
+        cliente_nome = f"{cliente_representation['nome_razao_social']}"
+        representation['nome_razao_social'] = cliente_nome
+        return representation
+
+
+class ClientesFinanceiroReembolsosSerializer(serializers.ModelSerializer):
+    cliente = ClientesFinanceiroSerializer()
+    
+    class Meta:
+       model = ClientesFinanceiroReembolsos
+       fields = '__all__'
+
+    def to_representation(self, instance):
+        representation = super().to_representation(instance)
+        cliente_representation = representation.pop('cliente')
+        cliente_nome = f"{cliente_representation['nome_razao_social']}"
+        representation['nome_razao_social'] = cliente_nome
+        return representation
 
 class RobosSerializer(serializers.ModelSerializer):
     class Meta:
