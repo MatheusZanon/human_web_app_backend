@@ -28,16 +28,18 @@ class VerifyToken(APIView):
             return Response({"token": "Válido"}, status=status.HTTP_200_OK)
         except (InvalidToken, TokenError) as e:
             return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
-
+        
+@permission_classes([IsAuthenticated])
 class GroupsViewSet(viewsets.ModelViewSet):
     queryset = Group.objects.all()
     serializer_class = GroupSerializer
 
+@permission_classes([IsAuthenticated])
 class FuncionarioViewset(viewsets.ModelViewSet):
     queryset = Funcionarios.objects.all()    
     serializer_class = FuncionariosSerializer
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='auth')
+    @action(detail=False, methods=['get'], url_path='auth')
     def auth_user(self, request, *args, **kwargs):
         try:
             user = Funcionarios.objects.get(user=request.user)
@@ -148,15 +150,17 @@ class FuncionarioViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
     
+@permission_classes([IsAuthenticated])
 class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiro.objects.all()    
     serializer_class = ClientesFinanceiroSerializer
 
+@permission_classes([IsAuthenticated])
 class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiroValores.objects.all()    
     serializer_class = ClientesFinanceiroValoresSerializer
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='vales_sst')
+    @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
             vales_sst = ClientesFinanceiroValores.objects.all()
@@ -165,7 +169,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 
-    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated], url_path='reembolsos')
+    @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
             reembolsos = ClientesFinanceiroReembolsos.objects.all()
@@ -174,6 +178,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 
+@permission_classes([IsAuthenticated])
 class RobosViewset(viewsets.ModelViewSet):
     queryset = Robos.objects.all()    
     serializer_class = RobosSerializer
