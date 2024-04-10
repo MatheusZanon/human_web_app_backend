@@ -3,6 +3,11 @@ from human_app.models import *
 from django.contrib.auth.models import User, Group
 
 # Create your serializers here.
+class GroupSerializer(serializers.ModelSerializer):
+    class Meta:
+       model = Group
+       fields = '__all__'
+
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
        model = User
