@@ -347,7 +347,7 @@ class RobosViewset(viewsets.ModelViewSet):
                 return Response("O robo não possui parâmetros definidos", status=status.HTTP_404_NOT_FOUND)
             
             parametros_testados = []
-            for key, value in parametros:
+            for key, value in parametros.items():
                 for param in robo_parametros:
                     parametro = Parametros.objects.get(pk=param.parametro.pk)
                     if not parametro:
@@ -363,7 +363,7 @@ class RobosViewset(viewsets.ModelViewSet):
                 print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
 
             nome_robo = robo.nome.lower().replace(" ", "_")
-            script_path = f"D:/workspace/Python/human/robo_folha_ponto/robo_{nome_robo}"
+            script_path = f"D:/workspace/Python/human/robo_folha_ponto"
             robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
             print("Robo em execução")
             sleep(3)
