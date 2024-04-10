@@ -105,7 +105,7 @@ class Parametros(models.Model):
         (DATE, "DATE"),
     }
 
-    nome = models.CharField(max_length=255)
+    nome = models.CharField(max_length=255, unique=True)
     tipo = models.CharField(max_length=255, choices=TIPOS, default=TEXT)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
