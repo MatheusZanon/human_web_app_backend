@@ -16,51 +16,8 @@ import requests
 import json
 
 # Create your views and viewsets here.
-class VerifyToken(APIView):
-    def get(self, request, format=None):
-        token = request.META.get('HTTP_AUTHORIZATION', None)
-        if token is None:
-            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
-
-        token = token.split(" ")[1]  # Remove "Bearer" do token
-        try:
-            UntypedToken(token)
-            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
-            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
-        
-@permission_classes([IsAuthenticated])
-class GroupsViewSet(viewsets.ModelViewSet):
-    queryset = Group.objects.all()
-    serializer_class = GroupSerializer
-
-@permission_classes([IsAuthenticated])
-class FuncionarioViewset(viewsets.ModelViewSet):
-    queryset = Funcionarios.objects.all()    
-    serializer_class = FuncionariosSerializer
-
-    @action(detail=False, methods=['get'], url_path='auth')
-    def auth_user(self, request, *args, **kwargs):
-        try:
-            user = Funcionarios.objects.get(user=request.user)
-            serializer = FuncionariosSerializer(user)
-            if serializer:
-                user_data = serializer.data
-
-                groups = [group.name for group in Group.objects.filter(user=request.user).all()]
-                permissionsQuery = [group.permissions.all() for group in Group.objects.filter(user=request.user).all()]
-                permissions: list
-                for permission in permissionsQuery:
-                    permissions = [permission.name for permission in permission]
-
-                user_data['groups'] = groups
-                user_data['permissions'] = permissions
-                del user_data['user_permissions']
-                return Response(user_data, status=status.HTTP_200_OK)
-        except Exception as error:
-            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    def create(self, request, *args, **kwargs):
+class UserView(APIView):
+    def post(self, request, *args, **kwargs):
         username = request.data.get('username')
         email = request.data.get('email')
         if User.objects.filter(username=username).exists():
@@ -85,6 +42,29 @@ class FuncionarioViewset(viewsets.ModelViewSet):
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class VerifyToken(APIView):
+    def get(self, request, format=None):
+        token = request.META.get('HTTP_AUTHORIZATION', None)
+        if token is None:
+            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        token = token.split(" ")[1]  # Remove "Bearer" do token
+        try:
+            UntypedToken(token)
+            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
+        except (InvalidToken, TokenError) as e:
+            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+        
+@permission_classes([IsAuthenticated])
+class GroupsViewSet(viewsets.ModelViewSet):
+    queryset = Group.objects.all()
+    serializer_class = GroupSerializer
+
+@permission_classes([IsAuthenticated])
+class FuncionarioViewset(viewsets.ModelViewSet):
+    queryset = Funcionarios.objects.all()    
+    serializer_class = FuncionariosSerializer
     
     def retrieve(self, request, pk=None):
         try:
@@ -122,6 +102,27 @@ class FuncionarioViewset(viewsets.ModelViewSet):
                 return Response(funcionarios_data, status=status.HTTP_200_OK)
         except Funcionarios.DoesNotExist:
             return Response({'error': 'Funcionários não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['get'], url_path='auth')
+    def auth_user(self, request, *args, **kwargs):
+        try:
+            user = Funcionarios.objects.get(user=request.user)
+            serializer = FuncionariosSerializer(user)
+            if serializer:
+                user_data = serializer.data
+
+                groups = [group.name for group in Group.objects.filter(user=request.user).all()]
+                permissionsQuery = [group.permissions.all() for group in Group.objects.filter(user=request.user).all()]
+                permissions: list
+                for permission in permissionsQuery:
+                    permissions = [permission.name for permission in permission]
+
+                user_data['groups'] = groups
+                user_data['permissions'] = permissions
+                del user_data['user_permissions']
+                return Response(user_data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['put'], url_path='activate')
     def activate_user(self, request, pk=None):

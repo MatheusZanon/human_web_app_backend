@@ -37,4 +37,7 @@ urlpatterns = [
     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/token/verify/', VerifyToken.as_view(), name='token_verify'),
+
+    # Cadastro
+    path('user/register/', UserView.as_view(), name='register'),
 ]
