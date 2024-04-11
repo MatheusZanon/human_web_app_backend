@@ -4,6 +4,7 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework.pagination import LimitOffsetPagination
 from django.contrib.auth.models import User, Group, Permission
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
@@ -151,10 +152,12 @@ class FuncionarioViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
     
-@permission_classes([IsAuthenticated])
+
 class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiro.objects.all()    
     serializer_class = ClientesFinanceiroSerializer
+    pagination_class = LimitOffsetPagination
+
 
 @permission_classes([IsAuthenticated])
 class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
