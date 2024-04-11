@@ -328,6 +328,23 @@ class RobosViewset(viewsets.ModelViewSet):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_NOT_FOUND)
+    
+    @action(detail=True, methods=['get'], url_path='rotinas/listar')
+    def listar_rotinas(self, request, pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            robo_rotinas = Rotinas.objects.filter(robo=pk)
+
+            if not robo_rotinas:
+                return Response("O robo não possui rotinas definidas", status=status.HTTP_204_NO_CONTENT)
+            
+            serializer = RotinasSerializer(robo_rotinas, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
         
     @action(detail=True, methods=['post'], url_path='executar')
     def executar_robo(self, request, pk=None):
