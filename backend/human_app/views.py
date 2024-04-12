@@ -152,33 +152,37 @@ class FuncionarioViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
     
-
+@permission_classes([IsAuthenticated])
 class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiro.objects.all()    
     serializer_class = ClientesFinanceiroSerializer
     pagination_class = LimitOffsetPagination
 
-
 @permission_classes([IsAuthenticated])
 class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiroValores.objects.all()    
     serializer_class = ClientesFinanceiroValoresSerializer
+    pagination_class = LimitOffsetPagination
 
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
             vales_sst = ClientesFinanceiroValores.objects.all()
-            serializer = ClientesFinanceiroValesSSTSerializer(vales_sst, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            page = self.paginate_queryset(vales_sst)
+            if page is not None:
+                serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
-            reembolsos = ClientesFinanceiroReembolsos.objects.all()
-            serializer = ClientesFinanceiroReembolsosSerializer(reembolsos, many=True)
-            return Response(serializer.data, status=status.HTTP_200_OK)
+            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('cliente_id')
+            page = self.paginate_queryset(reembolsos)
+            if page is not None:    
+                serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
 

@@ -52,7 +52,7 @@ def create_groups():
                         'view_robosparametros', 'add_rotinas', 'change_rotinas', 'delete_rotinas', 'view_rotinas',],
 
 
-        'RG_OPERACAO': ['change_user', 'view_user',
+        'RH_OPERACAO': ['change_user', 'view_user',
                         'change_funcionarios', 'view_funcionarios',
                         'change_robos', 'view_robos', 'add_parametros', 'change_parametros', 'delete_parametros', 
                         'view_parametros', 'add_robosparametros', 'change_robosparametros', 'delete_robosparametros', 

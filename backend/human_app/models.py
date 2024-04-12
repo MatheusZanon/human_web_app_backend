@@ -82,8 +82,8 @@ class Robos(models.Model):
     nome = models.CharField(max_length=50, blank=True, null=True)
     categoria = models.CharField(max_length=50, blank=True, null=True)
     descricao = models.CharField(max_length=255, blank=True, null=True)
-    execucoes = models.IntegerField(blank=True, null=True)
-    ultima_execucao = models.DateField(blank=True, null=True)
+    execucoes = models.DateField(default=0)
+    ultima_execucao = models.DateField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -129,7 +129,7 @@ class RobosParametros(models.Model):
         db_table = 'robos_parametros'
 
 class Rotinas(models.Model):
-    nome = models.CharField(max_length=255)
+    nome = models.CharField(max_length=255, unique=True)
     robo = models.ForeignKey(to=Robos,
                             on_delete=models.CASCADE,
                             related_name='rotinas',
