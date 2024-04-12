@@ -138,7 +138,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
                 user.save()
             return Response(f"O usuário {user.username} foi ativado com sucesso", status=status.HTTP_204_NO_CONTENT)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['put'], url_path='deactivate')
     def desactivate_user(self, request, pk=None):
@@ -148,7 +148,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
             user.save()
             return Response(f"O usuário {user.username} foi desativado com sucesso", status=status.HTTP_204_NO_CONTENT)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
 @permission_classes([IsAuthenticated])
 class ClientesFinanceiroViewset(viewsets.ModelViewSet):
@@ -167,7 +167,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
             serializer = ClientesFinanceiroValesSSTSerializer(vales_sst, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
@@ -176,7 +176,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
             serializer = ClientesFinanceiroReembolsosSerializer(reembolsos, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @permission_classes([IsAuthenticated])
 class RobosViewset(viewsets.ModelViewSet):
@@ -203,7 +203,7 @@ class RobosViewset(viewsets.ModelViewSet):
             robo.delete()
             return Response(f"Robo excluído com sucesso", status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['post'], url_path='parametros/criar')
     def criar_parametro(self, request, pk=None):
@@ -225,7 +225,7 @@ class RobosViewset(viewsets.ModelViewSet):
                     robo_parametro_serializer.save()
                     return Response(f"Parâmetro criado com sucesso", status=status.HTTP_201_CREATED)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     @action(detail=True, methods=['get'], url_path='parametros/listar')
     def listar_parametros(self, request, pk=None):
@@ -241,7 +241,7 @@ class RobosViewset(viewsets.ModelViewSet):
             serializer = RobosParametrosSerializer(robo_parametros, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['put'], url_path='parametros/atualizar')
     def atualizar_parametros(self, request, pk=None):
@@ -271,7 +271,34 @@ class RobosViewset(viewsets.ModelViewSet):
                     return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
             return Response(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['put'], url_path='parametros/atualizar/(?P<param_pk>[^/.]+)')
+    def atualizar_parametro(self, request, pk=None, param_pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            robo_parametros = RobosParametros.objects.filter(robo=pk)
+            if not robo_parametros:
+                return Response("O parâmetro do robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+            parametro = None
+            for param in robo_parametros:
+                if param.parametro.pk == int(param_pk):
+                    parametro = Parametros.objects.get(pk=param.parametro.pk)
+                    break
+
+            if not parametro:
+                return Response("O parâmetro do robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+
+            parametro_serializer = ParametrosSerializer(parametro, data=request.data)
+
+            if parametro_serializer.is_valid():
+                parametro_serializer.save()
+                return Response("Parâmetro atualizado com sucesso", status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['delete'], url_path='parametros/excluir/(?P<param_pk>[^/.]+)')
     def excluir_parametro(self, request, pk=None, param_pk=None):
@@ -299,7 +326,7 @@ class RobosViewset(viewsets.ModelViewSet):
             param.delete()
             return Response("Parâmetro excluído com sucesso", status=status.HTTP_204_NO_CONTENT)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=True, methods=['get'], url_path='rotinas')
     def rotinas(self, request, pk=None):
@@ -327,7 +354,7 @@ class RobosViewset(viewsets.ModelViewSet):
             
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_500_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=True, methods=['get'], url_path='rotinas/listar')
     def listar_rotinas(self, request, pk=None):
@@ -344,7 +371,62 @@ class RobosViewset(viewsets.ModelViewSet):
             serializer = RotinasSerializer(robo_rotinas, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['put'], url_path='rotinas/atualizar/(?P<rotina_pk>[^/.]+)')
+    def editar_rotina(self, request, pk=None, rotina_pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            robo_rotinas = Rotinas.objects.filter(robo=pk)
+            if not robo_rotinas:
+                return Response("O robo não possui rotinas definidas", status=status.HTTP_404_NOT_FOUND)
+            
+            robo_rotina = None
+            for rotina in robo_rotinas:
+                if rotina.pk == int(rotina_pk):
+                    robo_rotina = rotina
+                    break
+
+            if not robo_rotina:
+                return Response("A rotina do robo não foi encontrada", status=status.HTTP_404_NOT_FOUND)
+
+            request.data['robo'] = pk
+            robo_rotina_serializer = RotinasSerializer(robo_rotina, data=request.data)
+            if robo_rotina_serializer.is_valid():
+                robo_rotina_serializer.save()
+                return Response("Rotina atualizada com sucesso", status=status.HTTP_204_NO_CONTENT)
+
+            return Response(robo_rotina_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['delete'], url_path='rotinas/excluir/(?P<rotina_pk>[^/.]+)')
+    def excluir_rotina(self, request, pk=None, rotina_pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        try:
+            robo_rotinas = Rotinas.objects.filter(robo=pk)
+            if not robo_rotinas:
+                return Response("O robo não possui rotinas definidas", status=status.HTTP_404_NOT_FOUND)
+            
+            robo_rotina = None
+            for rotina in robo_rotinas:
+                if rotina.pk == int(rotina_pk):
+                    robo_rotina = rotina
+                    break
+
+            if not robo_rotina:
+                return Response("A rotina do robo não foi encontrada", status=status.HTTP_404_NOT_FOUND)
+
+            robo_rotina.delete()
+            return Response("Rotina excluída com sucesso", status=status.HTTP_204_NO_CONTENT)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     @action(detail=True, methods=['post'], url_path='executar')
     def executar_robo(self, request, pk=None):
@@ -399,5 +481,5 @@ class RobosViewset(viewsets.ModelViewSet):
                 requests.post(f"http://127.0.0.1:5000/shutdown")
                 return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            return Response(f"{error}", status=status.HTTP_404_NOT_FOUND)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
