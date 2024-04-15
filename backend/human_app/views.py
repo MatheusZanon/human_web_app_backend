@@ -351,13 +351,18 @@ class RobosViewset(viewsets.ModelViewSet):
     
     @action(detail=True, methods=['post'], url_path='rotinas/criar')
     def criar_rotina(self, request, pk=None):
+        request_data = request.data
+        request_data['robo'] = pk
         try:
             robo = Robos.objects.get(id=pk)
         except Robos.DoesNotExist:
             return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
         try:
-            request_data = request.data
-            request_data['robo'] = pk
+            if Rotinas.objects.filter(robo=pk, nome=request_data['nome']).exists():
+                return Response("Esta rotina já foi criada", status=status.HTTP_400_BAD_REQUEST)
+            
+            print(request_data)
+
             serializer = RotinasSerializer(data=request_data)
 
             if serializer.is_valid():
