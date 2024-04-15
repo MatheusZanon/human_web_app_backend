@@ -129,7 +129,7 @@ class RobosParametros(models.Model):
         db_table = 'robos_parametros'
 
 class Rotinas(models.Model):
-    nome = models.CharField(max_length=255, unique=True)
+    nome = models.CharField(max_length=255)
     robo = models.ForeignKey(to=Robos,
                             on_delete=models.CASCADE,
                             related_name='rotinas',

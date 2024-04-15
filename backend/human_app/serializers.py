@@ -55,7 +55,7 @@ class ClientesFinanceiroValesSSTSerializer(serializers.ModelSerializer):
     
     class Meta:
        model = ClientesFinanceiroValores
-       fields = ['id', 'cliente', 'vale_transporte', 'assinat_eletronica', 'vale_refeicao', 'mensal_ponto_elet', 'saude_seguranca_trabalho']
+       fields = ['id', 'cliente', 'vale_transporte', 'assinat_eletronica', 'vale_refeicao', 'mensal_ponto_elet', 'saude_seguranca_trabalho', 'mes', 'ano']
 
     def to_representation(self, instance):
         representation = super().to_representation(instance)

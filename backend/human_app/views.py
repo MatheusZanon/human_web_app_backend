@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.pagination import LimitOffsetPagination
+from rest_framework.filters import SearchFilter
 from django.contrib.auth.models import User, Group, Permission
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
@@ -157,6 +158,9 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     queryset = ClientesFinanceiro.objects.all()    
     serializer_class = ClientesFinanceiroSerializer
     pagination_class = LimitOffsetPagination
+    filter_backends = [SearchFilter]
+    search_fields = ['nome_razao_social']
+
 
 @permission_classes([IsAuthenticated])
 class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):

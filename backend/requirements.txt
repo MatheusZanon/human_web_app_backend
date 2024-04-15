@@ -8,3 +8,4 @@ mysqlclient
 mysql-connector-python
 Faker
 requests
+django-filter
