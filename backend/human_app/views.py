@@ -18,8 +18,26 @@ import requests
 import json
 
 # Create your views and viewsets here.
-class UserView(APIView):
-    def post(self, request, *args, **kwargs):
+class UserViewset(viewsets.ModelViewSet):
+    queryset = User.objects.all()    
+    serializer_class = UserSerializer
+
+    @action(detail=False, methods=['get'], url_path='login')
+    def login(self, request, *args, **kwargs):
+        try:
+            user = Funcionarios.objects.get(user=request.user)
+            serializer = FuncionariosSerializer(user)
+            if serializer:
+                user_data = serializer.data
+                groups = [group.name for group in Group.objects.filter(user=request.user).all()]
+                user_data['groups'] = groups
+                del user_data['user_permissions']
+                return Response(user_data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    # CADASTRO  
+    def create(self, request, *args, **kwargs):
         username = request.data.get('username')
         email = request.data.get('email')
         if User.objects.filter(username=username).exists():
@@ -105,20 +123,6 @@ class FuncionarioViewset(viewsets.ModelViewSet):
         except Funcionarios.DoesNotExist:
             return Response({'error': 'Funcionários não encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
-    @action(detail=False, methods=['get'], url_path='auth')
-    def auth_user(self, request, *args, **kwargs):
-        try:
-            user = Funcionarios.objects.get(user=request.user)
-            serializer = FuncionariosSerializer(user)
-            if serializer:
-                user_data = serializer.data
-                groups = [group.name for group in Group.objects.filter(user=request.user).all()]
-                user_data['groups'] = groups
-                del user_data['user_permissions']
-                return Response(user_data, status=status.HTTP_200_OK)
-        except Exception as error:
-            return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-    
     @action(detail=True, methods=['put'], url_path='activate')
     def activate_user(self, request, pk=None):
         try:
@@ -168,7 +172,8 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
             page = self.paginate_queryset(vales_sst)
             if page is not None:
                 serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
-                return self.get_paginated_response(serializer.data)
+                vales_teste = self.get_paginated_response(serializer.data) 
+                return Response(vales_teste.data, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 

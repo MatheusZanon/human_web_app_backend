@@ -82,7 +82,7 @@ class Robos(models.Model):
     nome = models.CharField(max_length=50, blank=True, null=True)
     categoria = models.CharField(max_length=50, blank=True, null=True)
     descricao = models.CharField(max_length=255, blank=True, null=True)
-    execucoes = models.DateField(default=0)
+    execucoes = models.IntegerField(default=0)
     ultima_execucao = models.DateField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
