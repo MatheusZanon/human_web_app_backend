@@ -112,15 +112,8 @@ class FuncionarioViewset(viewsets.ModelViewSet):
             serializer = FuncionariosSerializer(user)
             if serializer:
                 user_data = serializer.data
-
                 groups = [group.name for group in Group.objects.filter(user=request.user).all()]
-                permissionsQuery = [group.permissions.all() for group in Group.objects.filter(user=request.user).all()]
-                permissions: list
-                for permission in permissionsQuery:
-                    permissions = [permission.name for permission in permission]
-
                 user_data['groups'] = groups
-                user_data['permissions'] = permissions
                 del user_data['user_permissions']
                 return Response(user_data, status=status.HTTP_200_OK)
         except Exception as error:
