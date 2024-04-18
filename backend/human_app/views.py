@@ -7,6 +7,8 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.filters import SearchFilter
 from django.contrib.auth.models import User, Group, Permission
+from .filters import IntervaloDeTempoFilter
+from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
@@ -188,6 +190,68 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@permission_classes([IsAuthenticated])
+class DashboardViewset(viewsets.ModelViewSet):
+    queryset = ClientesFinanceiroValores.objects.all()
+    serializer_class = ClientesFinanceiroValoresSerializer
+    filter_backends = [filters.DjangoFilterBackend]
+    filterset_class = IntervaloDeTempoFilter
+
+    @action(detail=False, methods=['get'], url_path='provisoes_direitos_trabalhistas')
+    def provisoesDireitosTrabalhistas(self, request):
+        try:
+            provisoes_direitos_trabalhistas = self.filter_queryset(self.get_queryset())
+            filtered_provisoes_direitos_trabalhistas = self.filterset_class(request.query_params, queryset=provisoes_direitos_trabalhistas).qs
+            serializer = ClientesFinanceiroValoresSerializer(filtered_provisoes_direitos_trabalhistas, many=True)
+
+            if serializer:
+                data = serializer.data
+                print(data)
+                totalDict = {}
+                for item in data:
+                    nome_razao_social = item['nome_razao_social']
+                    if nome_razao_social not in totalDict:
+                        totalDict[nome_razao_social] = {'name': nome_razao_social}
+                    total = totalDict[nome_razao_social]
+                    for key, value in item.items():
+                        if key != 'mes' and key != 'ano' and key != 'id' and key != 'nome_razao_social':
+                            if key not in total:
+                                total[key] = 0.0
+                            total[key] += value
+
+                result = list(totalDict.values())
+
+                return Response(result, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['get'], url_path='vales_sst')
+    def vales_sst(self, request):
+        try:
+            vales_sst = self.filter_queryset(self.get_queryset())
+            filtered_vales_sst = self.filterset_class(request.query_params, queryset=vales_sst).qs
+            serializer = ClientesFinanceiroValesSSTSerializer(filtered_vales_sst, many=True)
+
+            if serializer:
+                data = serializer.data
+                totalDict = {}
+                for item in data:
+                    nome_razao_social = item['nome_razao_social']
+                    if nome_razao_social not in totalDict:
+                        totalDict[nome_razao_social] = {'name': nome_razao_social}
+                    total = totalDict[nome_razao_social]
+                    for key, value in item.items():
+                        if key != 'mes' and key != 'ano' and key != 'id' and key != 'nome_razao_social':
+                            if key not in total:
+                                total[key] = 0.0
+                            total[key] += value
+
+                result = list(totalDict.values())
+                return Response(result, status=status.HTTP_200_OK)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 @permission_classes([IsAuthenticated])
 class RobosViewset(viewsets.ModelViewSet):
     queryset = Robos.objects.all()    

@@ -29,6 +29,7 @@ router.register(r'clientes_financeiro', ClientesFinanceiroViewset)
 router.register(r'financeiro_valores', ClientesFinanceiroValoresViewset)
 router.register(r'robos', RobosViewset)
 router.register(r'groups', GroupsViewSet)
+router.register(r'dashboard', DashboardViewset, basename='dashboard')
 
 urlpatterns = [
     path('api/', include(router.urls)),
