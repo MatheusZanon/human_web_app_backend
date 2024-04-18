@@ -198,31 +198,36 @@ class DashboardViewset(viewsets.ModelViewSet):
     filter_backends = [filters.DjangoFilterBackend]
     filterset_class = IntervaloDeTempoFilter
 
+    @action(detail=False, methods=['get'], url_path='clientes_financeiro')
+    def clientesFinanceiro(self, request):
+        try:
+            clientes_financeiro = ClientesFinanceiro.objects.all()
+            serializer = ClientesFinanceiroSerializer(clientes_financeiro, many=True)
+            
+            if serializer:
+                return Response(serializer.data, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'], url_path='provisoes_direitos_trabalhistas')
     def provisoesDireitosTrabalhistas(self, request):
         try:
-            provisoes_direitos_trabalhistas = self.filter_queryset(self.get_queryset())
-            filtered_provisoes_direitos_trabalhistas = self.filterset_class(request.query_params, queryset=provisoes_direitos_trabalhistas).qs
-            serializer = ClientesFinanceiroValoresSerializer(filtered_provisoes_direitos_trabalhistas, many=True)
+            empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
 
-            if serializer:
-                data = serializer.data
-                print(data)
-                totalDict = {}
-                for item in data:
-                    nome_razao_social = item['nome_razao_social']
-                    if nome_razao_social not in totalDict:
-                        totalDict[nome_razao_social] = {'name': nome_razao_social}
-                    total = totalDict[nome_razao_social]
-                    for key, value in item.items():
-                        if key != 'mes' and key != 'ano' and key != 'id' and key != 'nome_razao_social':
-                            if key not in total:
-                                total[key] = 0.0
-                            total[key] += value
+            if not empresa:
+                return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
 
-                result = list(totalDict.values())
+            provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk)
+            provisoes = []
 
-                return Response(result, status=status.HTTP_200_OK)
+            for provisao in provisoes_direitos_trabalhistas:
+                provisaoMes = {
+                    'mes': provisao.mes,
+                    'valor': round(provisao.soma_salarios_provdt * 0.3487, 2)
+                }
+                provisoes.append(provisaoMes)
+            
+            return Response(provisoes, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
