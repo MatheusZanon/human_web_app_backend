@@ -40,26 +40,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
             return response
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-
-@permission_classes([IsAuthenticated])
-class SessionVerifyToken(APIView):
-    def get(self, request, format=None):
-        return Response({"token": request.auth}, status=status.HTTP_200_OK)
-    
-
-class VerifyToken(APIView):
-    def get(self, request, format=None):
-        token = request.META.get('HTTP_AUTHORIZATION', None)
-        if token is None:
-            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
-
-        token = token.split(" ")[1]  # Remove "Bearer" do token
-        try:
-            UntypedToken(token)
-            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
-            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
         
 class UserViewset(viewsets.ModelViewSet):
     queryset = User.objects.all()    
@@ -68,7 +48,6 @@ class UserViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='login')
     def login(self, request, *args, **kwargs):
         try:
-            print(request.user)
             user = Funcionarios.objects.get(user=request.user)
             serializer = FuncionariosSerializer(user)
             if serializer:
@@ -106,6 +85,11 @@ class UserViewset(viewsets.ModelViewSet):
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@permission_classes([IsAuthenticated])
+class SessionVerifyToken(APIView):
+    def get(self, request, format=None):
+        return Response({"token": request.auth}, status=status.HTTP_200_OK)
         
 @permission_classes([IsAuthenticated])
 class GroupsViewSet(viewsets.ModelViewSet):
@@ -239,6 +223,61 @@ class RobosViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'], url_path='executar')
+    def executar_robo(self, request, pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+            if not robo:
+                return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+            
+            parametros = {}
+            for key, value in request.data.items():
+                parametros[key] = value
+
+            robo_parametros = RobosParametros.objects.filter(robo=pk).all()
+
+            if not robo_parametros:
+                return Response("O robo não possui parâmetros definidos", status=status.HTTP_404_NOT_FOUND)
+            
+            parametros_testados = []
+            for key, value in parametros.items():
+                for param in robo_parametros:
+                    parametro = Parametros.objects.get(pk=param.parametro.pk)
+                    if not parametro:
+                        return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
+                    parametros_testados.append(parametro.nome)
+                    if parametro.nome == key:
+                        param.valor = value
+                        param.save()
+                        print(f"Parametro {key} atualizado")
+                if not parametros_testados:
+                    return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
+            if param in parametros_testados != request.data.keys():
+                print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
+
+            nome_robo = robo.nome.lower().replace(" ", "_")
+            script_path = f"C:/Users/ACP/projetos/robo_{nome_robo}"
+            robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
+            print("Robo em execução")
+            sleep(2)
+            parametros_json = json.dumps(parametros)
+            resultado_request = requests.post(f"http://127.0.0.1:5000/", data=parametros_json, headers={'Content-Type': 'application/json'})
+ 
+            if resultado_request.status_code == 200:
+                print(f"Req concluída")
+                robo.execucoes = robo.execucoes + 1 if robo.execucoes else 1
+                robo.ultima_execucao = datetime.now()
+                robo.save()
+                print(f"{resultado_request.text}")
+                requests.post(f"http://127.0.0.1:5000/shutdown")
+                return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
+            else:
+                print(f"{resultado_request.text}")
+                requests.post(f"http://127.0.0.1:5000/shutdown")
+                return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
     @action(detail=True, methods=['post'], url_path='parametros/criar')
     def criar_parametro(self, request, pk=None):
         try:
@@ -464,61 +503,6 @@ class RobosViewset(viewsets.ModelViewSet):
 
             robo_rotina.delete()
             return Response("Rotina excluída com sucesso", status=status.HTTP_204_NO_CONTENT)
-        except Exception as error:
-            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    @action(detail=True, methods=['post'], url_path='executar')
-    def executar_robo(self, request, pk=None):
-        try:
-            robo = Robos.objects.get(id=pk)
-            if not robo:
-                return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
-            
-            parametros = {}
-            for key, value in request.data.items():
-                parametros[key] = value
-
-            robo_parametros = RobosParametros.objects.filter(robo=pk).all()
-
-            if not robo_parametros:
-                return Response("O robo não possui parâmetros definidos", status=status.HTTP_404_NOT_FOUND)
-            
-            parametros_testados = []
-            for key, value in parametros.items():
-                for param in robo_parametros:
-                    parametro = Parametros.objects.get(pk=param.parametro.pk)
-                    if not parametro:
-                        return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
-                    parametros_testados.append(parametro.nome)
-                    if parametro.nome == key:
-                        param.valor = value
-                        param.save()
-                        print(f"Parametro {key} atualizado")
-                if not parametros_testados:
-                    return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
-            if param in parametros_testados != request.data.keys():
-                print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
-
-            nome_robo = robo.nome.lower().replace(" ", "_")
-            script_path = f"C:/Users/ACP/projetos/robo_{nome_robo}"
-            robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
-            print("Robo em execução")
-            sleep(2)
-            parametros_json = json.dumps(parametros)
-            resultado_request = requests.post(f"http://127.0.0.1:5000/", data=parametros_json, headers={'Content-Type': 'application/json'})
- 
-            if resultado_request.status_code == 200:
-                print(f"Req concluída")
-                robo.execucoes = robo.execucoes + 1 if robo.execucoes else 1
-                robo.ultima_execucao = datetime.now()
-                robo.save()
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
-            else:
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
