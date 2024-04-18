@@ -2,20 +2,23 @@ from rest_framework import status, viewsets
 from rest_framework.views import APIView, Response
 from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.filters import SearchFilter
-from django.contrib.auth.models import User, Group, Permission
+from django.contrib.auth.models import User, Group
 from django.shortcuts import get_object_or_404, get_list_or_404
 from human_app.models import *
 from human_app.serializers import *
-from faker import Faker
 import subprocess
 from datetime import datetime
 from time import sleep
 import requests
 import json
+import logging
+
+logger = logging.getLogger('django')  # Usando o logger configurado para o Django
 
 # Create your views and viewsets here.
 class UserViewset(viewsets.ModelViewSet):
@@ -93,14 +96,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
             if serializer:
                 user_data = serializer.data
                 groups = [group.name for group in Group.objects.filter(user=user.user.id).all()]
-
-                permissionsQuery = [group.permissions.all() for group in Group.objects.filter(pk=user.user.id).all()]
-                permissions: list
-                for permission in permissionsQuery:
-                    permissions = [permission.name for permission in permission]
-
                 user_data['groups'] = groups
-                user_data['permissions'] = permissions
                 del user_data['user_permissions']
                 return Response(user_data, status=status.HTTP_200_OK)
         except Funcionarios.DoesNotExist:
@@ -168,7 +164,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
-            vales_sst = ClientesFinanceiroValores.objects.all()
+            vales_sst = ClientesFinanceiroValores.objects.all().order_by('mes')
             page = self.paginate_queryset(vales_sst)
             if page is not None:
                 serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
@@ -180,7 +176,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
-            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('cliente_id')
+            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('mes')
             page = self.paginate_queryset(reembolsos)
             if page is not None:    
                 serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
