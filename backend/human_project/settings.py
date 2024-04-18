@@ -152,7 +152,7 @@ CORS_ALLOW_CREDENTIALS = True
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'human_app.authentication.JWTAuthenticationFromCookie',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 }
@@ -161,7 +161,16 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=6),
     'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': True,
+    'UPDATE_LAST_LOGIN': True,
+
     'AUTH_HEADER_TYPES': ('Bearer',),
+    'AUTH_COOKIE': 'access_token',  # Nome do cookie para o token de acesso
+    'AUTH_COOKIE_DOMAIN': None,     # Domínio do cookie
+    'AUTH_COOKIE_SECURE': False,    # True em produção (https)
+    'AUTH_COOKIE_HTTP_ONLY': True,  # Acesso somente HTTP, não acessível por JS
+    'AUTH_COOKIE_PATH': '/',        # Caminho do cookie
+    'AUTH_COOKIE_SAMESITE': 'Lax',  # Protege contra CSRF
 }
 
 """

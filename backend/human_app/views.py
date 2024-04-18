@@ -21,6 +21,46 @@ import logging
 logger = logging.getLogger('django')  # Usando o logger configurado para o Django
 
 # Create your views and viewsets here.
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        try:
+            if response.status_code == 200:
+                access_token = response.data.get('access')
+                refresh_token = response.data.get('refresh')
+                response.set_cookie(
+                    key='access_token',
+                    value=access_token,
+                    httponly=True,
+                    samesite='Lax',
+                    path='/',
+                    secure=False  # True em produção
+                )
+                del response.data['refresh']  # Remova o refresh token da resposta
+            return response
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+@permission_classes([IsAuthenticated])
+class SessionVerifyToken(APIView):
+    def get(self, request, format=None):
+        return Response({"token": request.auth}, status=status.HTTP_200_OK)
+    
+
+class VerifyToken(APIView):
+    def get(self, request, format=None):
+        token = request.META.get('HTTP_AUTHORIZATION', None)
+        if token is None:
+            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
+
+        token = token.split(" ")[1]  # Remove "Bearer" do token
+        try:
+            UntypedToken(token)
+            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
+        except (InvalidToken, TokenError) as e:
+            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+        
 class UserViewset(viewsets.ModelViewSet):
     queryset = User.objects.all()    
     serializer_class = UserSerializer
@@ -28,6 +68,7 @@ class UserViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='login')
     def login(self, request, *args, **kwargs):
         try:
+            print(request.user)
             user = Funcionarios.objects.get(user=request.user)
             serializer = FuncionariosSerializer(user)
             if serializer:
@@ -65,19 +106,6 @@ class UserViewset(viewsets.ModelViewSet):
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-class VerifyToken(APIView):
-    def get(self, request, format=None):
-        token = request.META.get('HTTP_AUTHORIZATION', None)
-        if token is None:
-            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
-
-        token = token.split(" ")[1]  # Remove "Bearer" do token
-        try:
-            UntypedToken(token)
-            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
-            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
         
 @permission_classes([IsAuthenticated])
 class GroupsViewSet(viewsets.ModelViewSet):
