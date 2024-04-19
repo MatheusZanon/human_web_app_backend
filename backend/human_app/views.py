@@ -184,7 +184,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
-            vales_sst = ClientesFinanceiroValores.objects.all().order_by('mes')
+            vales_sst = ClientesFinanceiroValores.objects.all().order_by('mes', 'ano')
             page = self.paginate_queryset(vales_sst)
             if page is not None:
                 serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
@@ -196,7 +196,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
-            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('mes')
+            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('mes', 'ano')
             page = self.paginate_queryset(reembolsos)
             if page is not None:    
                 serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
@@ -411,12 +411,12 @@ class RobosViewset(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='rotinas')
     def rotinas(self, request, pk=None):
-        rotinas = get_list_or_404(Rotinas, robo=pk)
+        rotinas = Rotinas.objects.filter(robo=pk)
         serializer = RotinasSerializer(rotinas, many=True)
         if serializer:
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=True, methods=['post'], url_path='rotinas/criar')
     def criar_rotina(self, request, pk=None):
