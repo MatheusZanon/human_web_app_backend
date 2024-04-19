@@ -9,6 +9,7 @@ from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.filters import SearchFilter
 from django.contrib.auth.models import User, Group
 from django.shortcuts import get_object_or_404, get_list_or_404
+from django.http import JsonResponse
 from human_app.models import *
 from human_app.serializers import *
 import subprocess
@@ -89,7 +90,14 @@ class UserViewset(viewsets.ModelViewSet):
 @permission_classes([IsAuthenticated])
 class SessionVerifyToken(APIView):
     def get(self, request, format=None):
-        return Response({"token": request.auth}, status=status.HTTP_200_OK)
+        return Response({"Token: Válido"}, status=status.HTTP_200_OK)
+    
+class SessionLogout(APIView):
+    def post(self, request):
+        response = JsonResponse({"detail": "Logout realizado com sucesso."}, status=status.HTTP_204_NO_CONTENT)
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response
         
 @permission_classes([IsAuthenticated])
 class GroupsViewSet(viewsets.ModelViewSet):
