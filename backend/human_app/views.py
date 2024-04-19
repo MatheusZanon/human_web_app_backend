@@ -2,6 +2,7 @@ from rest_framework import status, viewsets
 from rest_framework.views import APIView, Response
 from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.pagination import LimitOffsetPagination
@@ -10,16 +11,39 @@ from django.contrib.auth.models import User, Group, Permission
 from .filters import IntervaloDeTempoFilter
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404, get_list_or_404
+from django.http import JsonResponse
 from human_app.models import *
 from human_app.serializers import *
-from faker import Faker
 import subprocess
 from datetime import datetime
 from time import sleep
 import requests
 import json
+import logging
+
+logger = logging.getLogger('django')  # Usando o logger configurado para o Django
 
 # Create your views and viewsets here.
+class CustomTokenObtainPairView(TokenObtainPairView):
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        try:
+            if response.status_code == 200:
+                access_token = response.data.get('access')
+                refresh_token = response.data.get('refresh')
+                response.set_cookie(
+                    key='access_token',
+                    value=access_token,
+                    httponly=True,
+                    samesite='Lax',
+                    path='/',
+                    secure=False  # True em produção
+                )
+                del response.data['refresh']  # Remova o refresh token da resposta
+            return response
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
 class UserViewset(viewsets.ModelViewSet):
     queryset = User.objects.all()    
     serializer_class = UserSerializer
@@ -64,19 +88,18 @@ class UserViewset(viewsets.ModelViewSet):
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-class VerifyToken(APIView):
-    def get(self, request, format=None):
-        token = request.META.get('HTTP_AUTHORIZATION', None)
-        if token is None:
-            return Response({"error": "Token não fornecido."}, status=status.HTTP_400_BAD_REQUEST)
 
-        token = token.split(" ")[1]  # Remove "Bearer" do token
-        try:
-            UntypedToken(token)
-            return Response({"token": "Válido"}, status=status.HTTP_200_OK)
-        except (InvalidToken, TokenError) as e:
-            return Response({"error": "Token inválido."}, status=status.HTTP_401_UNAUTHORIZED)
+@permission_classes([IsAuthenticated])
+class SessionVerifyToken(APIView):
+    def get(self, request, format=None):
+        return Response({"Token: Válido"}, status=status.HTTP_200_OK)
+    
+class SessionLogout(APIView):
+    def post(self, request):
+        response = JsonResponse({"detail": "Logout realizado com sucesso."}, status=status.HTTP_204_NO_CONTENT)
+        response.delete_cookie('access_token')
+        response.delete_cookie('refresh_token')
+        return response
         
 @permission_classes([IsAuthenticated])
 class GroupsViewSet(viewsets.ModelViewSet):
@@ -95,14 +118,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
             if serializer:
                 user_data = serializer.data
                 groups = [group.name for group in Group.objects.filter(user=user.user.id).all()]
-
-                permissionsQuery = [group.permissions.all() for group in Group.objects.filter(pk=user.user.id).all()]
-                permissions: list
-                for permission in permissionsQuery:
-                    permissions = [permission.name for permission in permission]
-
                 user_data['groups'] = groups
-                user_data['permissions'] = permissions
                 del user_data['user_permissions']
                 return Response(user_data, status=status.HTTP_200_OK)
         except Funcionarios.DoesNotExist:
@@ -170,7 +186,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
-            vales_sst = ClientesFinanceiroValores.objects.all()
+            vales_sst = ClientesFinanceiroValores.objects.all().order_by('mes', 'ano')
             page = self.paginate_queryset(vales_sst)
             if page is not None:
                 serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
@@ -182,7 +198,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
-            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('cliente_id')
+            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('mes', 'ano')
             page = self.paginate_queryset(reembolsos)
             if page is not None:    
                 serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
@@ -316,6 +332,61 @@ class RobosViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @action(detail=True, methods=['post'], url_path='executar')
+    def executar_robo(self, request, pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+            if not robo:
+                return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+            
+            parametros = {}
+            for key, value in request.data.items():
+                parametros[key] = value
+
+            robo_parametros = RobosParametros.objects.filter(robo=pk).all()
+
+            if not robo_parametros:
+                return Response("O robo não possui parâmetros definidos", status=status.HTTP_404_NOT_FOUND)
+            
+            parametros_testados = []
+            for key, value in parametros.items():
+                for param in robo_parametros:
+                    parametro = Parametros.objects.get(pk=param.parametro.pk)
+                    if not parametro:
+                        return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
+                    parametros_testados.append(parametro.nome)
+                    if parametro.nome == key:
+                        param.valor = value
+                        param.save()
+                        print(f"Parametro {key} atualizado")
+                if not parametros_testados:
+                    return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
+            if param in parametros_testados != request.data.keys():
+                print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
+
+            nome_robo = robo.nome.lower().replace(" ", "_")
+            script_path = f"C:/Users/ACP/projetos/robo_{nome_robo}"
+            robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
+            print("Robo em execução")
+            sleep(2)
+            parametros_json = json.dumps(parametros)
+            resultado_request = requests.post(f"http://127.0.0.1:5000/", data=parametros_json, headers={'Content-Type': 'application/json'})
+ 
+            if resultado_request.status_code == 200:
+                print(f"Req concluída")
+                robo.execucoes = robo.execucoes + 1 if robo.execucoes else 1
+                robo.ultima_execucao = datetime.now()
+                robo.save()
+                print(f"{resultado_request.text}")
+                requests.post(f"http://127.0.0.1:5000/shutdown")
+                return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
+            else:
+                print(f"{resultado_request.text}")
+                requests.post(f"http://127.0.0.1:5000/shutdown")
+                return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
     @action(detail=True, methods=['post'], url_path='parametros/criar')
     def criar_parametro(self, request, pk=None):
         try:
@@ -441,12 +512,12 @@ class RobosViewset(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'], url_path='rotinas')
     def rotinas(self, request, pk=None):
-        rotinas = get_list_or_404(Rotinas, robo=pk)
+        rotinas = Rotinas.objects.filter(robo=pk)
         serializer = RotinasSerializer(rotinas, many=True)
         if serializer:
             return Response(serializer.data, status=status.HTTP_200_OK)
         else:
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response(serializer.errors, status=status.HTTP_404_NOT_FOUND)
     
     @action(detail=True, methods=['post'], url_path='rotinas/criar')
     def criar_rotina(self, request, pk=None):
@@ -541,61 +612,6 @@ class RobosViewset(viewsets.ModelViewSet):
 
             robo_rotina.delete()
             return Response("Rotina excluída com sucesso", status=status.HTTP_204_NO_CONTENT)
-        except Exception as error:
-            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    @action(detail=True, methods=['post'], url_path='executar')
-    def executar_robo(self, request, pk=None):
-        try:
-            robo = Robos.objects.get(id=pk)
-            if not robo:
-                return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
-            
-            parametros = {}
-            for key, value in request.data.items():
-                parametros[key] = value
-
-            robo_parametros = RobosParametros.objects.filter(robo=pk).all()
-
-            if not robo_parametros:
-                return Response("O robo não possui parâmetros definidos", status=status.HTTP_404_NOT_FOUND)
-            
-            parametros_testados = []
-            for key, value in parametros.items():
-                for param in robo_parametros:
-                    parametro = Parametros.objects.get(pk=param.parametro.pk)
-                    if not parametro:
-                        return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
-                    parametros_testados.append(parametro.nome)
-                    if parametro.nome == key:
-                        param.valor = value
-                        param.save()
-                        print(f"Parametro {key} atualizado")
-                if not parametros_testados:
-                    return Response("Os parâmetros do robo não foram encontrados", status=status.HTTP_404_NOT_FOUND)
-            if param in parametros_testados != request.data.keys():
-                print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
-
-            nome_robo = robo.nome.lower().replace(" ", "_")
-            script_path = f"C:/Users/ACP/projetos/robo_{nome_robo}"
-            robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
-            print("Robo em execução")
-            sleep(2)
-            parametros_json = json.dumps(parametros)
-            resultado_request = requests.post(f"http://127.0.0.1:5000/", data=parametros_json, headers={'Content-Type': 'application/json'})
- 
-            if resultado_request.status_code == 200:
-                print(f"Req concluída")
-                robo.execucoes = robo.execucoes + 1 if robo.execucoes else 1
-                robo.ultima_execucao = datetime.now()
-                robo.save()
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
-            else:
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
