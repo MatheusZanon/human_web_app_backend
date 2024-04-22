@@ -278,6 +278,57 @@ class DashboardViewset(viewsets.ModelViewSet):
             return Response(provisoes, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @action(detail=False, methods=['get'], url_path='economia_formal')
+    def economiaFormal(self, request):
+        try:
+            economia_formal = []
+            # Verifique se ao menos um parâmetro é fornecido
+            has_nome = 'nome_razao_social' in request.query_params and request.query_params['nome_razao_social'] != ''
+            has_ano = 'ano' in request.query_params and request.query_params['ano'] != ''
+
+            if not has_nome and not has_ano:
+                # Se nenhum parâmetro for fornecido, retorne um erro
+                return Response("Ao menos o ano deve ser informado", status=status.HTTP_400_BAD_REQUEST)
+
+            # Filtrar com base nos parâmetros opcionais
+            if has_nome and has_ano:
+                cliente = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).first()
+
+                if not cliente:
+                    return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+
+                valores_cliente = ClientesFinanceiroValores.objects.filter(cliente=cliente.pk, ano=request.query_params['ano']).all()
+
+                for valor in valores_cliente:
+                    economia_formal.append({
+                        'nome_razao_social': valor.cliente.nome_razao_social,
+                        'economia_formal': valor.economia_formal,
+                        'mes': valor.mes,
+                        'ano': valor.ano
+                    })
+
+                economia_formal.sort(key=lambda x: x['mes'])
+                return Response(economia_formal, status=status.HTTP_200_OK)
+
+            # Caso o ano seja fornecido, mas não o nome_razao_social
+            if has_ano and not has_nome:
+                valores_clientes = ClientesFinanceiroValores.objects.filter(ano=request.query_params['ano']).all()
+
+                for valor in valores_clientes:
+                    economia_formal.append({
+                        'nome_razao_social': valor.cliente.nome_razao_social,
+                        'economia_formal': valor.economia_formal,
+                        'mes': valor.mes,
+                        'ano': valor.ano
+                    })
+
+                economia_formal.sort(key=lambda x: x['nome_razao_social'])
+                return Response(economia_formal, status=status.HTTP_200_OK)
+
+            return Response("Uma combinação não esperada de parâmetros foi recebida", status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
