@@ -236,46 +236,60 @@ class DashboardViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='provisoes_direitos_trabalhistas_3487')
     def provisoesDireitosTrabalhistas3487(self, request):
         try:
-            empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
+            has_nome_razao_social = 'nome_razao_social' in request.query_params and request.query_params['nome_razao_social'] != ''
+            has_ano = 'ano' in request.query_params and request.query_params['ano'] != '' and request.query_params['ano'] != '0'
 
-            if not empresa:
+            if not has_nome_razao_social or not has_ano:
                 return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
-
-            provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk, ano=request.query_params['ano'])
-            provisoes = []
-
-            for provisao in provisoes_direitos_trabalhistas:
-                provisaoMes = {
-                    'mes': provisao.mes,
-                    'valor': round(provisao.soma_salarios_provdt * 0.3487, 2)
-                }
-                provisoes.append(provisaoMes)
-                provisoes.sort(key=lambda x: x['mes'])
             
-            return Response(provisoes, status=status.HTTP_200_OK)
+            if has_nome_razao_social and has_ano:
+                empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
+
+                if not empresa:
+                    return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+
+                provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk, ano=request.query_params['ano'])
+                provisoes = []
+
+                for provisao in provisoes_direitos_trabalhistas:
+                    provisaoMes = {
+                        'mes': provisao.mes,
+                        'valor': round(provisao.soma_salarios_provdt * 0.3487, 2)
+                    }
+                    provisoes.append(provisaoMes)
+                    provisoes.sort(key=lambda x: x['mes'])
+                
+                return Response(provisoes, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'], url_path='provisoes_direitos_trabalhistas_0926')
     def provisoesDireitosTrabalhistas0926(self, request):
         try:
-            empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
+            has_nome_razao_social = 'nome_razao_social' in request.query_params and request.query_params['nome_razao_social'] != ''
+            has_ano = 'ano' in request.query_params and request.query_params['ano'] != '' and request.query_params['ano'] != '0'
 
-            if not empresa:
+            if not has_nome_razao_social or not has_ano:
                 return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
-
-            provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk, ano=request.query_params['ano'])
-            provisoes = []
-
-            for provisao in provisoes_direitos_trabalhistas:
-                provisaoMes = {
-                    'mes': provisao.mes,
-                    'valor': round(provisao.soma_salarios_provdt * 0.0926, 2)
-                }
-                provisoes.append(provisaoMes)
-                provisoes.sort(key=lambda x: x['mes'])
             
-            return Response(provisoes, status=status.HTTP_200_OK)
+            if has_nome_razao_social and has_ano:
+                empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
+
+                if not empresa:
+                    return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+
+                provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk, ano=request.query_params['ano'])
+                provisoes = []
+
+                for provisao in provisoes_direitos_trabalhistas:
+                    provisaoMes = {
+                        'mes': provisao.mes,
+                        'valor': round(provisao.soma_salarios_provdt * 0.0926, 2)
+                    }
+                    provisoes.append(provisaoMes)
+                    provisoes.sort(key=lambda x: x['mes'])
+                
+                return Response(provisoes, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -285,14 +299,15 @@ class DashboardViewset(viewsets.ModelViewSet):
             economia_formal = []
             # Verifique se ao menos um parâmetro é fornecido
             has_nome = 'nome_razao_social' in request.query_params and request.query_params['nome_razao_social'] != ''
-            has_ano = 'ano' in request.query_params and request.query_params['ano'] != ''
+            has_mes = 'mes' in request.query_params and request.query_params['mes'] != '' and request.query_params['mes'] != '0'
+            has_ano = 'ano' in request.query_params and request.query_params['ano'] != '' and request.query_params['ano'] != '0'
 
-            if not has_nome and not has_ano:
+            if not has_nome and not has_mes and not has_ano:
                 # Se nenhum parâmetro for fornecido, retorne um erro
-                return Response("Ao menos o ano deve ser informado", status=status.HTTP_400_BAD_REQUEST)
+                return Response("Ao menos o mês e o ano devem ser informado", status=status.HTTP_400_BAD_REQUEST)
 
             # Filtrar com base nos parâmetros opcionais
-            if has_nome and has_ano:
+            if has_nome and has_ano and not has_mes:
                 cliente = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).first()
 
                 if not cliente:
@@ -311,14 +326,15 @@ class DashboardViewset(viewsets.ModelViewSet):
                 economia_formal.sort(key=lambda x: x['mes'])
                 return Response(economia_formal, status=status.HTTP_200_OK)
 
-            # Caso o ano seja fornecido, mas não o nome_razao_social
-            if has_ano and not has_nome:
-                valores_clientes = ClientesFinanceiroValores.objects.filter(ano=request.query_params['ano']).all()
+            # Caso o mes e o ano sejam fornecidos, mas não o nome_razao_social
+            if has_mes and has_ano and not has_nome:
+                valores_clientes = ClientesFinanceiroValores.objects.filter(mes=request.query_params['mes'], ano=request.query_params['ano']).all()
 
                 for valor in valores_clientes:
                     economia_formal.append({
                         'nome_razao_social': valor.cliente.nome_razao_social,
                         'economia_formal': valor.economia_formal,
+                        'regiao': valor.cliente.regiao,
                         'mes': valor.mes,
                         'ano': valor.ano
                     })
