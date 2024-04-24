@@ -184,7 +184,21 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
-            vales_sst = ClientesFinanceiroValores.objects.all().order_by('mes', 'ano')
+            mes = request.query_params.get('mes')
+            ano = request.query_params.get('ano')
+            if mes == 'NaN':
+                mes = None
+            if ano == 'NaN':
+                ano = None
+
+            if mes and not ano:
+                vales_sst = ClientesFinanceiroValores.objects.filter(mes=mes, ano=datetime.now().year).order_by('mes', 'ano')
+            elif not mes and ano:
+                vales_sst = ClientesFinanceiroValores.objects.filter(ano=ano).order_by('mes', 'ano')
+            elif mes and ano:
+                vales_sst = ClientesFinanceiroValores.objects.filter(mes=mes, ano=ano).order_by('mes', 'ano')
+            elif mes==None and ano==None:
+                vales_sst = ClientesFinanceiroValores.objects.filter(ano=datetime.now().year).order_by('mes', 'ano')
             page = self.paginate_queryset(vales_sst)
             if page is not None:
                 serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
@@ -196,7 +210,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
-            reembolsos = ClientesFinanceiroReembolsos.objects.all().order_by('mes', 'ano')
+            reembolsos = ClientesFinanceiroReembolsos.objects.filter(mes=2).order_by('mes', 'ano')
             page = self.paginate_queryset(reembolsos)
             if page is not None:    
                 serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
