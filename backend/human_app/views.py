@@ -319,7 +319,6 @@ class DashboardViewset(viewsets.ModelViewSet):
                     economia_formal.append({
                         'nome_razao_social': valor.cliente.nome_razao_social,
                         'economia_formal': valor.economia_formal,
-                        'regiao': valor.cliente.regiao,
                         'mes': valor.mes,
                         'ano': valor.ano
                     })
