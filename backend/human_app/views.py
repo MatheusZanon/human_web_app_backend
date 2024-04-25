@@ -12,6 +12,7 @@ from .filters import IntervaloDeTempoFilter
 from django_filters import rest_framework as filters
 from django.shortcuts import get_object_or_404, get_list_or_404
 from django.http import JsonResponse
+from django.db.models import Sum
 from human_app.models import *
 from human_app.serializers import *
 import subprocess
@@ -329,7 +330,8 @@ class DashboardViewset(viewsets.ModelViewSet):
 
             # Caso o mes e o ano sejam fornecidos, mas não o nome_razao_social
             if has_mes and has_ano and not has_nome:
-                valores_clientes = ClientesFinanceiroValores.objects.filter(mes=request.query_params['mes'], ano=request.query_params['ano']).all()
+                clientes = ClientesFinanceiro.objects.filter(regiao="MANAUS").all()
+                valores_clientes = ClientesFinanceiroValores.objects.filter(mes=request.query_params['mes'], ano=request.query_params['ano'], cliente__in=clientes).all()
 
                 for valor in valores_clientes:
                     economia_formal.append({
@@ -344,6 +346,33 @@ class DashboardViewset(viewsets.ModelViewSet):
                 return Response(economia_formal, status=status.HTTP_200_OK)
 
             return Response("Uma combinação não esperada de parâmetros foi recebida", status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], url_path='economia_formal/total')
+    def economiaFormalTotal(self, request):
+        try:
+            economia_formal = []
+            has_ano = 'ano' in request.query_params and request.query_params['ano'] != '' and request.query_params['ano'] != '0'
+
+            if not has_ano:
+                return Response("O ano deve ser informado", status=status.HTTP_400_BAD_REQUEST)
+            
+            clientes = ClientesFinanceiro.objects.filter(regiao="MANAUS").all()
+            valores_clientes = ClientesFinanceiroValores.objects.filter(ano=request.query_params['ano'], cliente__in=clientes).all()
+            
+            total_economia_mensal = valores_clientes.values('mes').annotate(Sum('economia_formal'))
+
+            for item in total_economia_mensal:
+                economia_formal.append({
+                    'economia_formal': round(item['economia_formal__sum'], 2),
+                    'mes': item['mes'],
+                    'ano': request.query_params['ano']
+                })
+
+            economia_formal.sort(key=lambda x: x['mes'])
+
+            return Response(economia_formal, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
