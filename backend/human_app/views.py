@@ -7,6 +7,8 @@ from rest_framework_simplejwt.tokens import UntypedToken
 from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.filters import SearchFilter
+from django.db.models import Case, When, Sum, Value, FloatField
+from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User, Group
 from django.shortcuts import get_object_or_404, get_list_or_404
 from django.http import JsonResponse
@@ -191,26 +193,53 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
             if ano == 'NaN':
                 ano = None
 
-            if mes and not ano:
-                vales_sst = ClientesFinanceiroValores.objects.filter(mes=mes, ano=datetime.now().year).order_by('mes', 'ano')
-            elif not mes and ano:
-                vales_sst = ClientesFinanceiroValores.objects.filter(ano=ano).order_by('mes', 'ano')
-            elif mes and ano:
-                vales_sst = ClientesFinanceiroValores.objects.filter(mes=mes, ano=ano).order_by('mes', 'ano')
-            elif mes==None and ano==None:
-                vales_sst = ClientesFinanceiroValores.objects.filter(ano=datetime.now().year).order_by('mes', 'ano')
-            page = self.paginate_queryset(vales_sst)
+            clientes = ClientesFinanceiro.objects.annotate(
+                vale_transporte=Coalesce(Sum(Case(
+                    When(valores__mes=mes, valores__ano=ano, then='valores__vale_transporte'),
+                    default=Value(0, output_field=FloatField()),
+                    output_field=FloatField()
+                    )), Value(0, output_field=FloatField())),
+                assinat_eletronica=Coalesce(Sum(Case(
+                    When(valores__mes=mes, valores__ano=ano, then='valores__assinat_eletronica'),
+                    default=Value(0, output_field=FloatField()),
+                    output_field=FloatField()
+                )), Value(0, output_field=FloatField())),
+                vale_refeicao=Coalesce(Sum(Case(
+                    When(valores__mes=mes, valores__ano=ano, then='valores__vale_refeicao'),
+                    default=Value(0, output_field=FloatField()),
+                    output_field=FloatField()
+                )), Value(0, output_field=FloatField())),
+                mensal_ponto_elet=Coalesce(Sum(Case(
+                    When(valores__mes=mes, valores__ano=ano, then='valores__mensal_ponto_elet'),
+                    default=Value(0, output_field=FloatField()),
+                    output_field=FloatField()
+                )), Value(0, output_field=FloatField())),
+                saude_seguranca_trabalho=Coalesce(Sum(Case(
+                    When(valores__mes=mes, valores__ano=ano, then='valores__saude_seguranca_trabalho'),
+                    default=Value(0, output_field=FloatField()),
+                    output_field=FloatField()
+                )), Value(0, output_field=FloatField()))
+            )
+
+            page = self.paginate_queryset(clientes)
             if page is not None:
                 serializer = ClientesFinanceiroValesSSTSerializer(page, many=True)
-                vales_teste = self.get_paginated_response(serializer.data) 
-                return Response(vales_teste.data, status=status.HTTP_200_OK)
+                vales_data = self.get_paginated_response(serializer.data) 
+                return Response(vales_data.data, status=status.HTTP_200_OK)
         except Exception as error:
+            print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
         try:
-            reembolsos = ClientesFinanceiroReembolsos.objects.filter(mes=2).order_by('mes', 'ano')
+            mes = request.query_params.get('mes')
+            ano = request.query_params.get('ano')
+            if mes == 'NaN':
+                mes = None
+            if ano == 'NaN':
+                ano = None
+            reembolsos = ClientesFinanceiroReembolsos.objects.filter(mes=mes).order_by('mes', 'ano')
             page = self.paginate_queryset(reembolsos)
             if page is not None:    
                 serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
