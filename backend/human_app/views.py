@@ -295,7 +295,7 @@ class DashboardViewset(viewsets.ModelViewSet):
                             When(valores__ano=request.query_params['ano'], then='valores__soma_salarios_provdt'),
                             output_field=FloatField()
                         ),
-                        None
+                        Value(0, output_field=FloatField())
                     )
                 ).values('mes', 'valor')
 
@@ -334,7 +334,7 @@ class DashboardViewset(viewsets.ModelViewSet):
                             When(valores__ano=request.query_params['ano'], then='valores__soma_salarios_provdt'),
                             output_field=FloatField()
                         ),
-                        None
+                        Value(0, output_field=FloatField())
                     )
                 ).values('mes', 'valor')
 
@@ -363,16 +363,18 @@ class DashboardViewset(viewsets.ModelViewSet):
                 return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
             
             if has_nome_razao_social and has_ano:
+            
                 # Selecione todas as colunas da tabela ClientesFinanceiro e faça um join com ClientesFinanceiroValores
                 taxa_adm = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).select_related('valores').annotate(
                     taxa_administracao=Coalesce(
-                        Case(
-                            When(valores__ano=request.query_params['ano'], then=F('valores__percentual_human')),
-                            output_field=FloatField()
+                        Case(When(
+                            valores__ano=request.query_params['ano'], then='valores__percentual_human'),
+                            output_field=FloatField(),
                         ),
-                        None),
+                        Value(0, output_field=FloatField()),
+                    ),
                     mes=Case(
-                        When(valores__ano=request.query_params['ano'], then=F('valores__mes')),
+                        When(valores__ano=request.query_params['ano'], then='valores__mes'),
                         output_field=IntegerField()
                     )
                 ).values('nome_razao_social', 'taxa_administracao', 'mes')
@@ -381,14 +383,13 @@ class DashboardViewset(viewsets.ModelViewSet):
                     return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
                 
                 jsonData = list(taxa_adm)
-                
                 serializer = ClientesFinanceiroTaxaAdmSerializer(data=jsonData, many=True)
 
                 if serializer.is_valid():
                     return Response(serializer.data, status=status.HTTP_200_OK)
-
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
+            print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     @action(detail=False, methods=['get'], url_path='economia_formal')
