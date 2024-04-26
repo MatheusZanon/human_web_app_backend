@@ -69,6 +69,38 @@ class ClientesFinanceiroValesSSTSerializer(serializers.ModelSerializer):
             'saude_seguranca_trabalho'
         ]
 
+class ClientesFinanceiroProvisao3487Serializer(serializers.ModelSerializer):
+    mes=serializers.IntegerField()
+    valor=serializers.FloatField()
+
+    class Meta:
+        model = ClientesFinanceiro
+        fields = [
+            'mes',
+            'valor'
+        ]
+
+class ClientesFinanceiroProvisao0926Serializer(serializers.ModelSerializer):
+    mes=serializers.IntegerField()
+    valor=serializers.FloatField()
+
+    class Meta:
+        model = ClientesFinanceiro
+        fields = [
+            'mes',
+            'valor'
+        ]
+
+class ClientesFinanceiroTaxaAdmSerializer(serializers.ModelSerializer):
+    taxa_administracao = serializers.FloatField()
+    mes = serializers.IntegerField()
+
+    class Meta:
+        model = ClientesFinanceiro
+        fields = [
+            'taxa_administracao',
+            'mes'
+        ]
 
 class ClientesFinanceiroReembolsosSerializer(serializers.ModelSerializer):
     cliente = ClientesFinanceiroSerializer()

@@ -5,7 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.filters import SearchFilter
-from django.db.models import Case, When, Sum, Value, FloatField
+from django.db.models import Case, When, Sum, Value, FloatField, IntegerField, F
 from django.db.models.functions import Coalesce
 from django.contrib.auth.models import User, Group
 from .filters import IntervaloDeTempoFilter
@@ -285,23 +285,32 @@ class DashboardViewset(viewsets.ModelViewSet):
                 return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
             
             if has_nome_razao_social and has_ano:
-                empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
+                valores = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).select_related('valores').annotate(
+                    mes=Case(
+                        When(valores__ano=request.query_params['ano'], then='valores__mes'),
+                        output_field=IntegerField()
+                    ),
+                    valor=Coalesce(
+                        Case(
+                            When(valores__ano=request.query_params['ano'], then='valores__soma_salarios_provdt'),
+                            output_field=FloatField()
+                        ),
+                        None
+                    )
+                ).values('mes', 'valor')
 
-                if not empresa:
+                if not valores:
                     return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
 
-                provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk, ano=request.query_params['ano'])
-                provisoes = []
-
-                for provisao in provisoes_direitos_trabalhistas:
-                    provisaoMes = {
-                        'mes': provisao.mes,
-                        'valor': round(provisao.soma_salarios_provdt * 0.3487, 2)
-                    }
-                    provisoes.append(provisaoMes)
-                    provisoes.sort(key=lambda x: x['mes'])
+                provisoes = list(valores)
+                provisoes = list(map(lambda x: {'mes': x['mes'], 'valor': round(x['valor'] * 0.3487, 2)}, provisoes))
+                provisoes.sort(key=lambda x: x['mes'])
                 
-                return Response(provisoes, status=status.HTTP_200_OK)
+                serializer = ClientesFinanceiroProvisao3487Serializer(data=provisoes, many=True)
+                
+                if serializer.is_valid():
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
@@ -315,23 +324,70 @@ class DashboardViewset(viewsets.ModelViewSet):
                 return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
             
             if has_nome_razao_social and has_ano:
-                empresa = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).get()
+                valores = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).select_related('valores').annotate(
+                    mes=Case(
+                        When(valores__ano=request.query_params['ano'], then='valores__mes'),
+                        output_field=IntegerField()
+                    ),
+                    valor=Coalesce(
+                        Case(
+                            When(valores__ano=request.query_params['ano'], then='valores__soma_salarios_provdt'),
+                            output_field=FloatField()
+                        ),
+                        None
+                    )
+                ).values('mes', 'valor')
 
-                if not empresa:
+                if not valores:
                     return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
 
-                provisoes_direitos_trabalhistas = ClientesFinanceiroValores.objects.filter(cliente=empresa.pk, ano=request.query_params['ano'])
-                provisoes = []
-
-                for provisao in provisoes_direitos_trabalhistas:
-                    provisaoMes = {
-                        'mes': provisao.mes,
-                        'valor': round(provisao.soma_salarios_provdt * 0.0926, 2)
-                    }
-                    provisoes.append(provisaoMes)
-                    provisoes.sort(key=lambda x: x['mes'])
+                provisoes = list(valores)
+                provisoes = list(map(lambda x: {'mes': x['mes'], 'valor': round(x['valor'] * 0.0926, 2)}, provisoes))
+                provisoes.sort(key=lambda x: x['mes'])
                 
-                return Response(provisoes, status=status.HTTP_200_OK)
+                serializer = ClientesFinanceiroProvisao0926Serializer(data=provisoes, many=True)
+                
+                if serializer.is_valid():
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['get'], url_path='taxa_administracao')
+    def taxaAdministracao(self, request):
+        try:
+            has_nome_razao_social = 'nome_razao_social' in request.query_params and request.query_params['nome_razao_social'] != ''
+            has_ano = 'ano' in request.query_params and request.query_params['ano'] != '' and request.query_params['ano'] != '0'
+
+            if not has_nome_razao_social or not has_ano:
+                return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+            
+            if has_nome_razao_social and has_ano:
+                # Selecione todas as colunas da tabela ClientesFinanceiro e faça um join com ClientesFinanceiroValores
+                taxa_adm = ClientesFinanceiro.objects.filter(nome_razao_social=request.query_params['nome_razao_social']).select_related('valores').annotate(
+                    taxa_administracao=Coalesce(
+                        Case(
+                            When(valores__ano=request.query_params['ano'], then=F('valores__percentual_human')),
+                            output_field=FloatField()
+                        ),
+                        None),
+                    mes=Case(
+                        When(valores__ano=request.query_params['ano'], then=F('valores__mes')),
+                        output_field=IntegerField()
+                    )
+                ).values('nome_razao_social', 'taxa_administracao', 'mes')
+
+                if not taxa_adm:
+                    return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+                
+                jsonData = list(taxa_adm)
+                
+                serializer = ClientesFinanceiroTaxaAdmSerializer(data=jsonData, many=True)
+
+                if serializer.is_valid():
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
@@ -503,7 +559,7 @@ class RobosViewset(viewsets.ModelViewSet):
                 print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
 
             nome_robo = robo.nome.lower().replace(" ", "_")
-            script_path = f"D:\workspace\Python\human\\robo_{nome_robo}"
+            script_path = f"C:/Users/ACP/projetos/robo_{nome_robo}"
             robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
             print("Robo em execução")
             sleep(2)
