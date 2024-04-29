@@ -51,13 +51,13 @@ class DashboardViewset(viewsets.ModelViewSet):
                         When(valores__ano=request.query_params['ano'], then='valores__mes'),
                         output_field=IntegerField()
                     ),
-                    valor=Round(Coalesce(
-                        Case(
-                            When(valores__ano=request.query_params['ano'], then='valores__soma_salarios_provdt'),
-                            output_field=FloatField()
+                    valor=Round(
+                        Coalesce(
+                            F('valores__soma_salarios_provdt') * 0.3487,
+                            Value(0, output_field=FloatField())
                         ),
-                        Value(0, output_field=FloatField())
-                    ), 2)
+                        2
+                    ),
                 ).values('mes', 'valor')
 
                 if not valores:
@@ -89,13 +89,13 @@ class DashboardViewset(viewsets.ModelViewSet):
                         When(valores__ano=request.query_params['ano'], then='valores__mes'),
                         output_field=IntegerField()
                     ),
-                    valor=Round(Coalesce(
-                        Case(
-                            When(valores__ano=request.query_params['ano'], then='valores__soma_salarios_provdt'),
-                            output_field=FloatField()
+                    valor=Round(
+                        Coalesce(
+                            F('valores__soma_salarios_provdt') * 0.0926,
+                            Value(0, output_field=FloatField())
                         ),
-                        Value(0, output_field=FloatField())
-                    ), 2)
+                        2
+                    ),
                 ).values('mes', 'valor')
 
                 if not valores:
@@ -142,6 +142,8 @@ class DashboardViewset(viewsets.ModelViewSet):
                     return Response("O cliente financeiro não foi encontrado", status=status.HTTP_404_NOT_FOUND)
                 
                 jsonData = list(taxa_adm)
+                jsonData.sort(key=lambda x: x['mes'])
+                print(jsonData)
                 serializer = ClientesFinanceiroTaxaAdmSerializer(data=jsonData, many=True)
 
                 if serializer.is_valid():
