@@ -15,6 +15,41 @@ class RobosViewset(viewsets.ModelViewSet):
     queryset = Robos.objects.all()    
     serializer_class = RobosSerializer
 
+    def list(self, request):
+        try:
+            user_groups = {group.name for group in request.user.groups.all()}  # Use um set para otimizar a busca por grupos
+            categorias_permitidas = set()  # Conjunto para armazenar categorias permitidas
+
+            if "ADMIN" in user_groups or "TI" in user_groups:
+                # Se o usuário for "ADMIN" ou "TI", checar se a categoria foi informada
+                has_categoria = 'categoria' in request.query_params and request.query_params['categoria'] != ''
+
+                if has_categoria: # Se a categoria foi informada, adicionar a categoria ao conjunto de categorias permitidas
+                    categorias_permitidas.add(request.query_params['categoria'])
+                else: # Se a categoria não foi informada, permitir acesso a todas as categorias
+                    categorias_permitidas.update(Robos.objects.values_list('categoria', flat=True).distinct())
+            # Se o usuário for "RH_OPERACAO", permitir acesso à categoria "RH"
+            if "RH_OPERACAO" in user_groups or "RH_GERENCIA" in user_groups:
+                categorias_permitidas.add("RH")
+            # Se o usuário for "FINANCEIRO_OPERACAO", permitir acesso à categoria "FINANCEIRO"
+            if "FINANCEIRO_OPERACAO" in user_groups:
+                categorias_permitidas.add("FINANCEIRO")
+
+            # Se não houver categorias permitidas, proibir o acesso
+            if not categorias_permitidas:
+                return Response({"error": "Acesso proibido"}, status=status.HTTP_403_FORBIDDEN)
+
+            # Filtrar robôs por categorias permitidas
+            robos = Robos.objects.filter(categoria__in=categorias_permitidas)
+
+            # Serializa a resposta para retorno ao cliente
+            serializer = RobosSerializer(robos, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        except Exception as error:
+            # Mensagem de erro para rastreamento de exceção
+            return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def destroy(self, request, pk=None):
         try:
             robo = Robos.objects.get(id=pk)
