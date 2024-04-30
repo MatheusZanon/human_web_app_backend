@@ -143,14 +143,12 @@ class DashboardViewset(viewsets.ModelViewSet):
                 
                 jsonData = list(taxa_adm)
                 jsonData.sort(key=lambda x: x['mes'])
-                print(jsonData)
                 serializer = ClientesFinanceiroTaxaAdmSerializer(data=jsonData, many=True)
 
                 if serializer.is_valid():
                     return Response(serializer.data, status=status.HTTP_200_OK)
                 return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     @action(detail=False, methods=['get'], url_path='economia_liquida')
@@ -206,7 +204,6 @@ class DashboardViewset(viewsets.ModelViewSet):
 
             return Response("Uma combinação não esperada de parâmetros foi recebida", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'], url_path='economia_liquida/total')
@@ -257,7 +254,6 @@ class DashboardViewset(viewsets.ModelViewSet):
             
             return Response("Uma combinação não esperada de parâmetros foi recebida", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
-            print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @action(detail=False, methods=['get'], url_path='vales_sst')
