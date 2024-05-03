@@ -69,8 +69,6 @@ class FuncionarioViewset(viewsets.ModelViewSet):
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
     def partial_update(self, request, *args, **kwargs):
-        print(f"{request.user.pk} is updating user {kwargs['pk']} with data: {request.data}")
-
         try:
             user = User.objects.get(id=kwargs['pk'])
             funcionario = Funcionarios.objects.get(user=user)
@@ -100,19 +98,18 @@ class FuncionarioViewset(viewsets.ModelViewSet):
 
             # Validar e salvar User
             user_serializer = UserSerializer(user, data=user_data, partial=True)
-            if user_serializer.is_valid():
-                user_serializer.save()
-            else:
-                return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-            # Validar e salvar Funcionarios
             funcionario_serializer = FuncionariosSerializer(funcionario, data=funcionario_data, partial=True)
-            if funcionario_serializer.is_valid():
+            if user_serializer.is_valid() and funcionario_serializer.is_valid():
+                user_serializer.save()
                 funcionario_serializer.save()
             else:
-                return Response(funcionario_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                errors = user_serializer.errors
+                errors.append(funcionario_serializer.errors)
+                return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
-            return Response({"data": funcionario_serializer.data, "detail": "Usuário atualizado com sucesso."}, status=status.HTTP_200_OK)
+            data = funcionario_serializer.data
+            del data['user_permissions']
+            return Response(data, status=status.HTTP_200_OK)
 
         except User.DoesNotExist:
             return Response({"error": "Usuário não encontrado"}, status=status.HTTP_404_NOT_FOUND)
