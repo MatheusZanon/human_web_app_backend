@@ -4,7 +4,7 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import Group
 from human_app.models import User, Funcionarios
-from ..serializers import FuncionariosSerializer
+from ..serializers import FuncionariosSerializer, UserSerializer
 
 @permission_classes([IsAuthenticated])
 class FuncionarioViewset(viewsets.ModelViewSet):
@@ -67,3 +67,55 @@ class FuncionarioViewset(viewsets.ModelViewSet):
             return Response(f"O usuário {user.username} foi desativado com sucesso", status=status.HTTP_204_NO_CONTENT)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    def partial_update(self, request, *args, **kwargs):
+        print(f"{request.user.pk} is updating user {kwargs['pk']} with data: {request.data}")
+
+        try:
+            user = User.objects.get(id=kwargs['pk'])
+            funcionario = Funcionarios.objects.get(user=user)
+
+            # Atualizar campos do usuário
+            user_data = {}
+            if 'username' in request.data:
+                user_data['username'] = request.data['username']
+            if 'email' in request.data:
+                user_data['email'] = request.data['email']
+            if 'first_name' in request.data:
+                user_data['first_name'] = request.data['first_name']
+            if 'last_name' in request.data:
+                user_data['last_name'] = request.data['last_name']
+
+            # Atualizar grupos
+            if 'groups' in request.data:
+                user.groups.clear()
+                for group_id in request.data['groups']:
+                    group = Group.objects.get(id=group_id)
+                    user.groups.add(group)
+
+            # Atualizar campos de Funcionarios
+            funcionario_data = {}
+            if 'phone' in request.data:
+                funcionario_data['telefone_celular'] = request.data['phone']
+
+            # Validar e salvar User
+            user_serializer = UserSerializer(user, data=user_data, partial=True)
+            if user_serializer.is_valid():
+                user_serializer.save()
+            else:
+                return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            # Validar e salvar Funcionarios
+            funcionario_serializer = FuncionariosSerializer(funcionario, data=funcionario_data, partial=True)
+            if funcionario_serializer.is_valid():
+                funcionario_serializer.save()
+            else:
+                return Response(funcionario_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response({"data": funcionario_serializer.data, "detail": "Usuário atualizado com sucesso."}, status=status.HTTP_200_OK)
+
+        except User.DoesNotExist:
+            return Response({"error": "Usuário não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+
+        except Exception as error:
+            return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

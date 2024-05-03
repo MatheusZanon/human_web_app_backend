@@ -15,6 +15,14 @@ class RobosViewset(viewsets.ModelViewSet):
     queryset = Robos.objects.all()    
     serializer_class = RobosSerializer
 
+    @action(detail=False, methods=['get'], url_path='categorias')
+    def categorias(self, request):
+        try:
+            categorias = Robos.objects.values_list('categoria', flat=True).distinct()
+            return Response(categorias, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def list(self, request):
         try:
             user_groups = {group.name for group in request.user.groups.all()}  # Use um set para otimizar a busca por grupos
