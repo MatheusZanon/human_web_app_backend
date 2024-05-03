@@ -24,6 +24,19 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     serializer_class = ClientesFinanceiroValoresSerializer
     pagination_class = LimitOffsetPagination
 
+    @action(detail=True, methods=['get'], url_path='profile')
+    def profile(self, request, pk=None):
+        try:
+            print(request.user)
+            cliente = ClientesFinanceiro.objects.get(id=pk)
+            serializer = ClientesFinanceiroSerializer(cliente)
+            if serializer.is_valid():
+                return Response(serializer.data, status=status.HTTP_200_OK)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     @action(detail=False, methods=['get'], url_path='vales_sst')
     def vales_sst(self, request):
         try:
