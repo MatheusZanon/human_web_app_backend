@@ -101,7 +101,7 @@ class Migration(migrations.Migration):
                 ('saude_seguranca_trabalho', models.FloatField(blank=True, null=True)),
                 ('percentual_human', models.FloatField(blank=True, null=True)),
                 ('economia_mensal', models.FloatField(blank=True, null=True)),
-                ('economia_formal', models.FloatField(blank=True, null=True)),
+                ('economia_liquida', models.FloatField(blank=True, null=True)),
                 ('total_fatura', models.FloatField(blank=True, null=True)),
                 ('mes', models.IntegerField()),
                 ('ano', models.IntegerField()),
