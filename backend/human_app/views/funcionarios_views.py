@@ -33,6 +33,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
                 index = 0
                 for funcionario in funcionarios_data:
                     groups = [group.name for group in Group.objects.filter(user=funcionario.get('id')).all()]
+                    funcionario['situacao'] = funcionarios.get(id=funcionario.get('id')).situacao
                     funcionario['groups'] = groups
                     del funcionario['user_permissions']
                     funcionarios_data[index] = funcionario
@@ -51,6 +52,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
                 group = Group.objects.get(id=id)
                 user.groups.add(group)
                 user.is_active = True
+                Funcionarios.objects.filter(user=user).update(situacao='ATIVO')
                 if group.name == 'ADMIN':
                     user.is_staff = True
                 user.save()
@@ -63,6 +65,7 @@ class FuncionarioViewset(viewsets.ModelViewSet):
         try:
             user = User.objects.filter(id=pk).get()
             user.is_active = False
+            Funcionarios.objects.filter(user=user).update(situacao='INATIVO')
             user.save()
             return Response(f"O usuário {user.username} foi desativado com sucesso", status=status.HTTP_204_NO_CONTENT)
         except Exception as error:

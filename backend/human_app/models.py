@@ -7,6 +7,7 @@ class Funcionarios(models.Model):
     rg = models.CharField(max_length=8, blank=True, null=True)
     cpf = models.CharField(max_length=11, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
+    situacao = models.CharField(max_length=100, default='INATIVO')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
