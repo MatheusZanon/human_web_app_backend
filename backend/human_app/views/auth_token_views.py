@@ -1,6 +1,6 @@
+from rest_framework import status
 from rest_framework.views import APIView, Response
 from rest_framework_simplejwt.views import TokenObtainPairView
-from rest_framework import status
 from rest_framework.decorators import permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse

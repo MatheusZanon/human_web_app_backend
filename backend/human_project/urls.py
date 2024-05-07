@@ -30,6 +30,7 @@ router.register(r'financeiro_valores', ClientesFinanceiroValoresViewset)
 router.register(r'robos', RobosViewset)
 router.register(r'groups', GroupsViewSet)
 router.register(r'dashboard', DashboardViewset, basename='dashboard')
+router.register(r'google_drive', GoogleDriveViewSet, basename='google_drive')
 
 urlpatterns = [
     path('api/', include(router.urls)),

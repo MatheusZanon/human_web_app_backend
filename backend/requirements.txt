@@ -9,3 +9,6 @@ mysql-connector-python
 Faker
 requests
 django-filter
+google-api-python-client 
+google-auth-httplib2 
+google-auth-oauthlib
