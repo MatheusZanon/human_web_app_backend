@@ -26,6 +26,8 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
             cliente_data = {}
             if 'nome_razao_social' in request.data:
                 cliente_data['nome_razao_social'] = request.data['nome_razao_social']
+            if 'nome_fantasia' in request.data:
+                cliente_data['nome_fantasia'] = request.data['nome_fantasia']
             if 'email' in request.data:
                 cliente_data['email'] = request.data['email']
             if 'cnpj' in request.data:
@@ -38,20 +40,19 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
                 cliente_data['regiao'] = request.data['regiao']
 
             # Validar e salvar Cliente
+            print(cliente_data)
             cliente_serializer = ClientesFinanceiroSerializer(cliente, data=cliente_data, partial=True)
             if cliente_serializer.is_valid() and cliente_serializer.is_valid():
                 cliente_serializer.save()
+                data = cliente_serializer.data
+                return Response(data, status=status.HTTP_200_OK)
             else:
                 errors = cliente_serializer.errors
                 return Response(errors, status=status.HTTP_400_BAD_REQUEST)
 
-            data = cliente_serializer.data
-            return Response(data, status=status.HTTP_200_OK)
-
         except cliente.DoesNotExist:
             return Response({"error": "Usuário não encontrado"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as error:
-            print(error)
             return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @permission_classes([IsAuthenticated])

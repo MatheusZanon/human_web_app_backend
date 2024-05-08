@@ -16,6 +16,7 @@ class Funcionarios(models.Model):
 
 class ClientesFinanceiro(models.Model):
     nome_razao_social = models.CharField(max_length=255)
+    nome_fantasia = models.CharField(max_length=255, blank=True, null=True)
     cnpj = models.CharField(max_length=25, blank=True, null=True)
     cpf = models.CharField(max_length=25, blank=True, null=True)
     email = models.CharField(max_length=255, blank=True, null=True)
