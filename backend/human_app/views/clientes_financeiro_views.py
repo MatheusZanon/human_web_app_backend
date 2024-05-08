@@ -40,7 +40,6 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
                 cliente_data['regiao'] = request.data['regiao']
 
             # Validar e salvar Cliente
-            print(cliente_data)
             cliente_serializer = ClientesFinanceiroSerializer(cliente, data=cliente_data, partial=True)
             if cliente_serializer.is_valid() and cliente_serializer.is_valid():
                 cliente_serializer.save()
