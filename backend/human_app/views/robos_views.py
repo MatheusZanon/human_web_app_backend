@@ -142,8 +142,12 @@ class RobosViewset(viewsets.ModelViewSet):
         except Robos.DoesNotExist:
             return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
         try:
-            if Parametros.objects.filter(nome=request.data['nome']).exists():
-                return Response("Este parâmetro já foi criado", status=status.HTTP_400_BAD_REQUEST)
+            parametro = Parametros.objects.filter(nome=request.data['nome'])
+            if parametro.exists():
+                robo_parametro_serializer = RobosParametrosSerializer(data={'robo': robo.id, 'parametro': parametro.get().pk})
+                if robo_parametro_serializer.is_valid():
+                    robo_parametro_serializer.save()
+                    return Response(f"Parâmetro criado com sucesso", status=status.HTTP_201_CREATED)
             
             parametro_serializer = ParametrosSerializer(data=request.data)
 
