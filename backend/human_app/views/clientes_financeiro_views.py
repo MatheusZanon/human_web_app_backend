@@ -18,6 +18,18 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     filter_backends = [SearchFilter]
     search_fields = ['nome_razao_social']
 
+    def create(self, request, *args, **kwargs):
+        try:
+            cliente_serializer = ClientesFinanceiroSerializer(data=request.data)
+            if cliente_serializer.is_valid():
+                cliente_serializer.save()
+                data = cliente_serializer.data
+                return Response(data, status=status.HTTP_201_CREATED)
+            else:
+                return Response(cliente_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
     def partial_update(self, request, *args, **kwargs):
         try:
             cliente = ClientesFinanceiro.objects.get(id=kwargs['pk'])
