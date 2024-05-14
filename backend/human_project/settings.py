@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
+from django.core.management.utils import get_random_secret_key
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -161,15 +162,18 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 }
 
+signing_key = os.getenv('SIMPLE_JWT_SIGNING_KEY')
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=25),
-    'REFRESH_TOKEN_LIFETIME': timedelta(hours=6),
+    'REFRESH_TOKEN_LIFETIME': timedelta(hours=4),
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
     'UPDATE_LAST_LOGIN': True,
 
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': signing_key,
     'AUTH_HEADER_TYPES': ('Bearer',),
-    'AUTH_COOKIE': 'access_token',  # Nome do cookie para o token de acesso
+    'AUTH_COOKIE': 'user_info',     # Nome do cookie para os tokens
     'AUTH_COOKIE_DOMAIN': None,     # Domínio do cookie
     'AUTH_COOKIE_SECURE': False,    # True em produção (https)
     'AUTH_COOKIE_HTTP_ONLY': True,  # Acesso somente HTTP, não acessível por JS
