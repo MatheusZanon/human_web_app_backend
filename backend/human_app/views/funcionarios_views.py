@@ -119,3 +119,25 @@ class FuncionarioViewset(viewsets.ModelViewSet):
 
         except Exception as error:
             return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['put'], url_path='situacao')
+    def update_situacao(self, request, pk=None):
+        try:
+            situacao = request.data['situacao']
+            if situacao not in ['INATIVO', 'ATIVO', 'SUSPENSO', 'FERIAS']:
+                return Response({"error": "Situação inválida"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            funcionario = Funcionarios.objects.get(id=pk)
+            funcionario.situacao = situacao
+
+            serializer = FuncionariosSerializer(funcionario, {'situacao': situacao}, partial=True)
+            if serializer.is_valid():
+                serializer.save()
+                return Response(status=status.HTTP_204_NO_CONTENT)
+            else:
+                return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except funcionario.DoesNotExist:
+            return Response({"error": "Funcionário não encontrado"}, status=status.HTTP_404_NOT_FOUND)
+        except Exception as error:
+            print(error)
+            return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
