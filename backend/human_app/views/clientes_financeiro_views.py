@@ -131,6 +131,68 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['put'], url_path='vales_sst/atualizar')
+    def update_vales_sst(self, request):
+        try:
+            mes = request.data.get('mes')
+            ano = request.data.get('ano')
+            if mes == 'NaN':
+                mes = None
+            if ano == 'NaN':
+                ano = None
+
+            nome_razao_social = request.data.get('nome_razao_social')
+            vale_transporte = request.data.get('vale_transporte')
+            vale_refeicao = request.data.get('vale_refeicao')
+            saude_seguranca_trabalho = request.data.get('saude_seguranca_trabalho')
+            mensal_ponto_elet = request.data.get('mensal_ponto_elet')
+            assinat_eletronica = request.data.get('assinat_eletronica')
+
+            data = {
+                'mes': mes,
+                'ano': ano,
+                'vale_transporte': vale_transporte,
+                'vale_refeicao': vale_refeicao,
+                'saude_seguranca_trabalho': saude_seguranca_trabalho,
+                'mensal_ponto_elet': mensal_ponto_elet,
+                'assinat_eletronica': assinat_eletronica,
+            }
+
+            if not nome_razao_social:
+                return Response({'nome_razao_social': ['Este campo não pode ser vazio.']}, status=status.HTTP_400_BAD_REQUEST)
+
+            try:
+                cliente = ClientesFinanceiro.objects.get(nome_razao_social=nome_razao_social)
+            except ClientesFinanceiro.DoesNotExist:
+                return Response({'nome_razao_social': ['Cliente não encontrado.']}, status=status.HTTP_404_NOT_FOUND)
+
+            vale = ClientesFinanceiroValores.objects.filter(
+                mes=mes,
+                ano=ano,
+                cliente=cliente
+            ).first()
+
+            if vale:
+                # Vale existe, atualiza-lo
+                serializer = ClientesFinanceiroValoresSerializer(vale, data=data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Vale não existe, cria-lo
+                serializer = ClientesFinanceiroValoresSerializer(data=data)
+                if serializer.is_valid():
+                    serializer.save(cliente=cliente)
+                    return Response(serializer.data, status=status.HTTP_201_CREATED)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 
     @action(detail=False, methods=['get'], url_path='reembolsos')
     def reembolsos(self, request):
