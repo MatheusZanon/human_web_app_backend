@@ -50,7 +50,6 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 @permission_classes([IsAuthenticated])   
 class SessionVerifyToken(APIView):
     def get(self, request, format=None):
-        print("Passando pela Sessão de Verificação do Token")
         return Response({"Token": "Verificado"}, status=status.HTTP_200_OK)
 
 class SessionRenewToken(APIView):
