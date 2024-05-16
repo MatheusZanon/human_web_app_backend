@@ -39,6 +39,7 @@ urlpatterns = [
     # Autenticação
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
-    path('api/session/verify/', SessionVerifyToken.as_view(), name='session_verify'),
+    path('api/session/renew/', SessionRenewToken.as_view(), name='session_renew_token'),
+    path('api/session/verify/', SessionVerifyToken.as_view(), name='session_verify_token'),
     path('api/session/logout/', SessionLogout.as_view(), name='session_logout'),
 ]
