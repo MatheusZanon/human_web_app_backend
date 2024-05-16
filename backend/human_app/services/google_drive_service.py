@@ -7,7 +7,6 @@ from google.auth.transport.requests import Request
 
 
 def Create_Service(client_secret_file, api_name, api_version, *scopes):
-    #print(client_secret_file, api_name, api_version, scopes, sep='-')
     CLIENT_SECRET_FILE = client_secret_file
     API_SERVICE_NAME = api_name
     API_VERSION = api_version
@@ -23,6 +22,8 @@ def Create_Service(client_secret_file, api_name, api_version, *scopes):
         with open(pickle_file, 'rb') as token:
             cred = pickle.load(token)
 
+    print(cred, cred.valid)
+
     if not cred or not cred.valid:
         if cred and cred.expired and cred.refresh_token:
             cred.refresh(Request())
@@ -31,6 +32,7 @@ def Create_Service(client_secret_file, api_name, api_version, *scopes):
             cred = flow.run_local_server()
 
         with open(pickle_file, 'wb') as token:
+            print(f'token_pickle')
             pickle.dump(cred, token)
 
     try:

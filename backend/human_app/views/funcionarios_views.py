@@ -24,9 +24,29 @@ class FuncionarioViewset(viewsets.ModelViewSet):
         except Funcionarios.DoesNotExist:
             return Response({'error': 'Funcionário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
     
-    def list(self, request, *args, **kwargs):
+    @action(detail=False, methods=['get'], url_path='buscar_usuarios_ativos')
+    def buscar_usuarios_ativos(self, request, *args, **kwargs):
         try:
-            funcionarios = Funcionarios.objects.all()
+            funcionarios = Funcionarios.objects.filter(user__is_active=True)
+            serializer = FuncionariosSerializer(funcionarios, many=True)
+            if serializer:
+                funcionarios_data = serializer.data
+                index = 0
+                for funcionario in funcionarios_data:
+                    groups = [group.name for group in Group.objects.filter(user=funcionario.get('id')).all()]
+                    funcionario['situacao'] = funcionarios.get(id=funcionario.get('id')).situacao
+                    funcionario['groups'] = groups
+                    del funcionario['user_permissions']
+                    funcionarios_data[index] = funcionario
+                    index += 1
+                return Response(funcionarios_data, status=status.HTTP_200_OK)
+        except Funcionarios.DoesNotExist:
+            return Response({'error': 'Funcionários não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+    
+    @action(detail=False, methods=['get'], url_path='buscar_usuarios_inativos')
+    def buscar_usuarios_inativos(self, request, *args, **kwargs):
+        try:
+            funcionarios = Funcionarios.objects.filter(user__is_active=False)
             serializer = FuncionariosSerializer(funcionarios, many=True)
             if serializer:
                 funcionarios_data = serializer.data
