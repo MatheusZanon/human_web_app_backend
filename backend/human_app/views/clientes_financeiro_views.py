@@ -8,6 +8,7 @@ from django.db.models import Case, When, Sum, Value, FloatField
 from django.db.models.functions import Coalesce
 from human_app.models import ClientesFinanceiro, ClientesFinanceiroReembolsos
 from ..serializers.clientes_financeiro_serial import *
+import json
 
 
 @permission_classes([IsAuthenticated])
@@ -208,5 +209,64 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
             if page is not None:    
                 serializer = ClientesFinanceiroReembolsosSerializer(page, many=True)
                 return self.get_paginated_response(serializer.data)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'], url_path='reembolsos/criar')
+    def create_reembolsos(self, request):
+        try:
+            cliente_razao_social = request.data.get('nome_razao_social')
+            if not cliente_razao_social:
+                return Response({'nome_razao_social': ['Este campo não pode ser vazio.']}, status=status.HTTP_400_BAD_REQUEST)
+            
+            cliente = ClientesFinanceiro.objects.filter(nome_razao_social=cliente_razao_social).first()
+            if cliente:
+                data = {
+                    'mes': request.data.get('mes'),
+                    'ano': request.data.get('ano'),
+                    'valor': request.data.get('valor'),
+                    'descricao': request.data.get('descricao'),
+                }
+                reembolso = ClientesFinanceiroReembolsos.objects.create(cliente=cliente, **data)
+                reembolso.save()
+                return Response({'message': 'Reembolso criado com sucesso.'}, status=status.HTTP_201_CREATED)
+            else:
+                return Response({'error': 'Cliente não encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=False, methods=['put'], url_path='reembolsos/atualizar')
+    def update_reembolsos(self, request):
+        try:
+            id = request.data.get('id')
+            data = {
+                'mes': request.data.get('mes'),
+                'ano': request.data.get('ano'),
+                'valor': request.data.get('valor'),
+                'descricao': request.data.get('descricao'),
+            }
+            reembolso = ClientesFinanceiroReembolsos.objects.filter(pk=id).first()
+            if reembolso:
+                serializer = ClientesFinanceiroReembolsosSerializer(reembolso, data=data, partial=True)
+                if serializer.is_valid():
+                    serializer.save()
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                return Response({'error': 'Reembolso não encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['delete'], url_path='reembolsos/deletar/(?P<reembolso_pk>[^/.]+)')
+    def delete_reembolsos(self, request, reembolso_pk=None):
+        try:
+            id = request.data.get('id')
+            reembolso = ClientesFinanceiroReembolsos.objects.filter(pk=reembolso_pk).first()
+            if reembolso:
+                reembolso.delete()
+                return Response({'message': 'Reembolso deletado com sucesso.'}, status=status.HTTP_200_OK)
+            else:
+                return Response({'error': 'Reembolso não encontrado.'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
