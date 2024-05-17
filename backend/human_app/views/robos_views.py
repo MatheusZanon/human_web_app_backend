@@ -125,11 +125,12 @@ class RobosViewset(viewsets.ModelViewSet):
                 robo.execucoes = robo.execucoes + 1 if robo.execucoes else 1
                 robo.ultima_execucao = datetime.now()
                 robo.save()
-                print(f"{resultado_request.text}")
-                requests.post(f"http://127.0.0.1:5000/shutdown")
-                return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
+                try:
+                    requests.post(f"http://127.0.0.1:5000/shutdown")
+                    return Response("Robo executado com sucesso", status=status.HTTP_200_OK)
+                except requests.exceptions.ConnectionError as error:
+                    return Response("Robô executado com sucesso. Servidor Fechado", status=status.HTTP_200_OK)
             else:
-                print(f"{resultado_request.text}")
                 requests.post(f"http://127.0.0.1:5000/shutdown")
                 return Response("Erro ao executar o robo", status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:

@@ -1,5 +1,5 @@
-import os
 import pickle
+import os
 from google_auth_oauthlib.flow import Flow, InstalledAppFlow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
@@ -7,32 +7,30 @@ from google.auth.transport.requests import Request
 
 
 def Create_Service(client_secret_file, api_name, api_version, *scopes):
+    print(client_secret_file, api_name, api_version, scopes, sep='-')
     CLIENT_SECRET_FILE = client_secret_file
     API_SERVICE_NAME = api_name
     API_VERSION = api_version
     SCOPES = [scope for scope in scopes[0]]
-    #print(SCOPES)
+    print(SCOPES)
 
     cred = None
 
     pickle_file = f'token_{API_SERVICE_NAME}_{API_VERSION}.pickle'
-    #print(pickle_file)
+    # print(pickle_file)
 
     if os.path.exists(pickle_file):
         with open(pickle_file, 'rb') as token:
             cred = pickle.load(token)
-
-    print(cred, cred.valid)
 
     if not cred or not cred.valid:
         if cred and cred.expired and cred.refresh_token:
             cred.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET_FILE, SCOPES)
-            cred = flow.run_local_server()
+            cred = flow.run_local_server(port=8080)
 
         with open(pickle_file, 'wb') as token:
-            print(f'token_pickle')
             pickle.dump(cred, token)
 
     try:
@@ -41,5 +39,5 @@ def Create_Service(client_secret_file, api_name, api_version, *scopes):
         return service
     except Exception as e:
         print('Unable to connect.')
-        print(e)
+        print('Unnable to connect.', e)
         return None
