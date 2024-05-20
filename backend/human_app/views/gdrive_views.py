@@ -11,7 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 #------------------- CONFIGURACOES GOOGLE DRIVE -------------------
 load_dotenv()
 
-CLIENT_SECRET_FILE = os.getenv('CLIENT_SECRET_FILE')
+SECRET_SERVICE_FILE = os.getenv('SECRET_SERVICE_FILE')
 API_NAME = os.getenv('API_NAME')
 API_VERSION = os.getenv('API_VERSION')
 SCOPES = [os.getenv('SCOPES')]
@@ -19,6 +19,7 @@ SCOPES = [os.getenv('SCOPES')]
 
 @permission_classes([IsAuthenticated])
 class GoogleDriveViewSet(viewsets.ModelViewSet):
+    queryset = None
 
     @action(detail=False, methods=['get'], url_path='upload_arquivos')
     def upload_arquivo(self, request):
@@ -27,14 +28,12 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='listar_arquivos')
     def listar_arquivos(self, request):
         try:    
-            service = Create_Service(CLIENT_SECRET_FILE, API_NAME, API_VERSION, SCOPES)
-            print(service)
+            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
             folder_id = request.query_params.get('folder_id')
             query = f"parents in '{folder_id}'"
 
-            response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, parents, modifiedTime)").execute()
+            response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, modifiedTime)").execute()
             arquivos = response.get('files', [])
-
             arquivos_ordenados = sorted(arquivos, key=itemgetter('mimeType'), reverse=True)
 
             return Response(arquivos_ordenados, status=status.HTTP_200_OK)
@@ -43,10 +42,14 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'], url_path='preview_arquivo')
-    def preview_arquivo(self, request):
+    def preview_arquivo(self, request, ):
         try:
-            print("preview_arquivo", request.query_params.get('arquivo_id'))
-            return Response("preview_arquivo", status=status.HTTP_200_OK)
+            print(request.query_params.get('arquivo_id'))
+            result = {
+                'id': '12345567474576',
+                'name': 'teste',                
+            } 
+            return Response(result, status=status.HTTP_200_OK)
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
