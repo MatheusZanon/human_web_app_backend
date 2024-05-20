@@ -32,7 +32,7 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             folder_id = request.query_params.get('folder_id')
             query = f"parents in '{folder_id}'"
 
-            response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, modifiedTime)").execute()
+            response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, parents, modifiedTime)").execute()
             arquivos = response.get('files', [])
             arquivos_ordenados = sorted(arquivos, key=itemgetter('mimeType'), reverse=True)
 
