@@ -44,12 +44,10 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='preview_arquivo')
     def preview_arquivo(self, request, ):
         try:
-            print(request.query_params.get('arquivo_id'))
-            result = {
-                'id': '12345567474576',
-                'name': 'teste',                
-            } 
-            return Response(result, status=status.HTTP_200_OK)
+            arquivo_id = request.query_params.get('arquivo_id')
+            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
+            response = service.files().get(fileId=arquivo_id).execute()
+            return Response(response, status=status.HTTP_200_OK)
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
