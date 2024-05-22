@@ -22,6 +22,7 @@ class ClientesFinanceiro(models.Model):
     email = models.CharField(max_length=255, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
     regiao = models.CharField(max_length=45)
+    is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

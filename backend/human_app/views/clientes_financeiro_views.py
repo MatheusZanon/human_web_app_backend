@@ -66,6 +66,26 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
             return Response({"error": "Usuário não encontrado"}, status=status.HTTP_404_NOT_FOUND)
         except Exception as error:
             return Response({"error": str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=True, methods=['put'], url_path='ativar')
+    def activate_cliente(self, request, pk=None):
+        try:
+            cliente = ClientesFinanceiro.objects.get(id=pk)
+            cliente.is_active = True
+            cliente.save()
+            return Response(status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    @action(detail=True, methods=['put'], url_path='desativar')
+    def desactivate_cliente(self, request, pk=None):
+        try:
+            cliente = ClientesFinanceiro.objects.get(id=pk)
+            cliente.is_active = False
+            cliente.save()
+            return Response(status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @permission_classes([IsAuthenticated])
 class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
