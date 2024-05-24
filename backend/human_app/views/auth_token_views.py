@@ -9,6 +9,19 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from django.http import JsonResponse
 from django.conf import settings
+from human_app.models import User
+from ..serializers.user_serial import *
+
+class CheckUser(APIView):
+    serializer = UserSerializer
+    def post(self, request):
+        try:
+            user = User.objects.get(username=request.data['username'])
+            if user.is_active:
+                return Response({"Usuário ativo"}, status=status.HTTP_200_OK)
+            return Response({"Usuário inativo"}, status=status.HTTP_403_FORBIDDEN)
+        except User.DoesNotExist:
+            return Response({"Usuário inexistente"}, status=status.HTTP_404_NOT_FOUND)
 
 class CustomTokenObtainPairView(TokenObtainPairView):
     def post(self, request, *args, **kwargs):

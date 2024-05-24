@@ -37,6 +37,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     # Autenticação
+    path('api/check_user', CheckUser.as_view(), name='check_user'),
     path('api/token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
     path('api/session/renew/', SessionRenewToken.as_view(), name='session_renew_token'),
