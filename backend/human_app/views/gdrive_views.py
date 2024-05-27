@@ -37,7 +37,7 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
 
             response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, parents, modifiedTime)").execute()
             arquivos = response.get('files', [])
-            arquivos_ordenados = sorted(arquivos, key=itemgetter('mimeType'), reverse=True)
+            arquivos_ordenados = sorted(arquivos, key=itemgetter('mimeType', 'name'))
 
             return Response(arquivos_ordenados, status=status.HTTP_200_OK)
         except Exception as error:

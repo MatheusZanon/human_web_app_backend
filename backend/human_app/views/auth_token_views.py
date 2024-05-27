@@ -11,15 +11,22 @@ from django.http import JsonResponse
 from django.conf import settings
 from human_app.models import User
 from ..serializers.user_serial import *
+from django.contrib.auth.hashers import check_password
 
 class CheckUser(APIView):
     serializer = UserSerializer
     def post(self, request):
         try:
-            user = User.objects.get(username=request.data['username'])
-            if user.is_active:
-                return Response({"Usuário ativo"}, status=status.HTTP_200_OK)
-            return Response({"Usuário inativo"}, status=status.HTTP_403_FORBIDDEN)
+            username = request.data['username']
+            password = request.data['password']
+            user = User.objects.get(username=username)
+            check = check_password(password, user.password)
+            if check and user.is_active:
+                return Response({"Usuário válido"}, status=status.HTTP_200_OK)
+            elif not check:
+                return Response({"Usuário inválido"}, status=status.HTTP_403_FORBIDDEN)
+            elif not user.is_active:
+                return Response({"Usuário inativo"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         except User.DoesNotExist:
             return Response({"Usuário inexistente"}, status=status.HTTP_404_NOT_FOUND)
 
