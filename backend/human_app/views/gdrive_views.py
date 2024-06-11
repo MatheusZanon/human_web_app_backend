@@ -27,10 +27,6 @@ SCOPES = [os.getenv('SCOPES')]
 class GoogleDriveViewSet(viewsets.ModelViewSet):
     queryset = None
 
-    @action(detail=False, methods=['get'], url_path='upload_arquivos')
-    def upload_arquivo(self, request):
-        print("upload_arquivo")
-
     @action(detail=False, methods=['get'], url_path='listar_arquivos')
     def listar_arquivos(self, request):
         try:    
@@ -43,6 +39,32 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             arquivos_ordenados = sorted(arquivos, key=itemgetter('mimeType', 'name'))
 
             return Response(arquivos_ordenados, status=status.HTTP_200_OK)
+        except Exception as error:
+            print(error)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @xframe_options_exempt
+    @action(detail=False, methods=['get'], url_path='serve_file_preview')
+    def serve_file_preview(self, request):
+        try:
+            arquivo_id = request.query_params.get('arquivo_id')
+            print("Arquivo ID:", arquivo_id)
+            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
+            
+            file_info = service.files().get(fileId=arquivo_id, fields='name, mimeType').execute()
+            mimeType = file_info.get('mimeType')
+            filename = file_info.get('name')
+
+            request = service.files().get_media(fileId=arquivo_id)
+            file_io = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_io, request)
+
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            file_io.seek(0)
+
+            return FileResponse(file_io, as_attachment=False, filename=filename, content_type=mimeType)
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -79,36 +101,26 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='download_arquivo')
     def download_arquivo(self, request):
         try:
-            arquivo_id = request.query_params.get('id')
-            arquivo_name = request.query_params.get('nome')
-            print("Arquivo ID:", arquivo_id, "Arquivo nome:", arquivo_name)
-            return Response(status=status.HTTP_200_OK)
-        except Exception as error:
-            print(error)
-            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-
-    @xframe_options_exempt
-    @action(detail=False, methods=['get'], url_path='serve_file_preview')
-    def serve_file_preview(self, request):
-        try:
-            arquivo_id = request.query_params.get('arquivo_id')
-            print("Arquivo ID:", arquivo_id)
+            file_id = request.query_params.get('id')
+            if not file_id:
+                return Response("O ID do arquivo deve ser informado.", status=status.HTTP_400_BAD_REQUEST)
             service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
-            
-            file_info = service.files().get(fileId=arquivo_id, fields='name, mimeType').execute()
-            mimeType = file_info.get('mimeType')
-            filename = file_info.get('name')
 
-            request = service.files().get_media(fileId=arquivo_id)
+            request = service.files().get_media(fileId=file_id) 
             file_io = io.BytesIO()
             downloader = MediaIoBaseDownload(file_io, request)
-
+         
             done = False
             while not done:
-                _, done = downloader.next_chunk()
-            file_io.seek(0)
+                download_status, done = downloader.next_chunk()
 
-            return FileResponse(file_io, as_attachment=False, filename=filename, content_type=mimeType)
+            file_io.seek(0)
+            file_metadata = service.files().get(fileId=file_id, fields="name, mimeType").execute()
+
+            # Retornar o arquivo como resposta HTTP
+            response = HttpResponse(file_io.read(), content_type=file_metadata.get('mimeType'))
+            response['Content-Length'] = len(file_io.getvalue())  # Adicionar o tamanho do arquivo
+            return response
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
