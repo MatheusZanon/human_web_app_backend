@@ -60,7 +60,6 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
                     'name': file.name,
                     'parents': [folder_id],
                 }
-                print(file_metadata)
 
                 # Cria um arquivo temporário se necessário
                 if hasattr(file, 'temporary_file_path'):
@@ -77,19 +76,13 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    @staticmethod
-    def download_arquivo(service, arquivo_id):
+    @action(detail=False, methods=['get'], url_path='download_arquivo')
+    def download_arquivo(self, request):
         try:
-            request = service.files().get_media(fileId=arquivo_id)
-            file_io = io.BytesIO()
-            downloader = MediaIoBaseDownload(file_io, request)
-            
-            done = False
-            while done is False:
-                status, done = downloader.next_chunk()
-            
-            file_io.seek(0)
-            return Response(file_io, status=status.HTTP_200_OK)
+            arquivo_id = request.query_params.get('id')
+            arquivo_name = request.query_params.get('nome')
+            print("Arquivo ID:", arquivo_id, "Arquivo nome:", arquivo_name)
+            return Response(status=status.HTTP_200_OK)
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
