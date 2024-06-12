@@ -107,8 +107,36 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='folha_ponto')
     def listar_folha_ponto(self, request):
         try:
-            folha_ponto = ClientesFinanceiroFolhaPonto.objects.all().select_related('cliente').all()
+            nome_razao_social = request.query_params.get('nome_razao_social')
+            cnpj = request.query_params.get('cnpj')
+            cpf = request.query_params.get('cpf')
 
+            if nome_razao_social and cnpj or nome_razao_social and cpf or cnpj and cpf or nome_razao_social and cnpj and cpf:
+                return Response({"error": "Por favor, insira apenas um dos seguintes filtros 'nome_razao_social', 'cnpj', 'cpf'"}, status=status.HTTP_400_BAD_REQUEST)
+
+            if nome_razao_social:
+                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__is_active=True, cliente__nome_razao_social=nome_razao_social)
+
+                serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
+                if serializer:
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+            
+            if cnpj:
+                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__is_active=True, cliente__cnpj=cnpj)
+
+                serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
+                if serializer:
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+
+            if cpf:
+                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__is_active=True, cliente__cpf=cpf)
+
+                serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
+                if serializer:
+                    return Response(serializer.data, status=status.HTTP_200_OK)
+                        
+            folha_ponto = ClientesFinanceiroFolhaPonto.objects.filter(cliente__is_active=True).order_by('cliente__nome_razao_social')
+            
             page = self.paginate_queryset(folha_ponto)
 
             if page is not None:
@@ -123,13 +151,13 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='folha_ponto')
     def folha_ponto(self, request, pk=None):
         try:
-            folha_ponto = ClientesFinanceiroFolhaPonto.objects.filter(cliente_id=pk)
+            folha_ponto = ClientesFinanceiroFolhaPonto.objects.filter(cliente_id=pk, cliente__is_active=True).order_by('cliente__nome_razao_social')
 
             if not folha_ponto:
                 return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
             
-            json = ClienteFinanceiroFolhaPontoSerializer(folha_ponto, many=True).data
-            return Response(json, status=status.HTTP_200_OK)
+            serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto, many=True)
+            return Response(serializer.data, status=status.HTTP_200_OK)
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
