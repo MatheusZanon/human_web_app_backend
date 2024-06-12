@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from human_app.models import ClientesFinanceiro, ClientesFinanceiroValores, ClientesFinanceiroReembolsos
+from human_app.models import ClientesFinanceiro, ClientesFinanceiroValores, ClientesFinanceiroReembolsos, ClientesFinanceiroFolhaPonto
 
 class ClientesFinanceiroSerializer(serializers.ModelSerializer):
     class Meta:
@@ -76,3 +76,9 @@ class ClientesFinanceiroReembolsosSerializer(serializers.ModelSerializer):
         cliente_nome = f"{cliente_representation['nome_razao_social']}"
         representation['nome_razao_social'] = cliente_nome
         return representation
+
+class ClienteFinanceiroFolhaPontoSerializer(serializers.ModelSerializer):
+    cliente = ClientesFinanceiroSerializer()
+    class Meta:
+       model = ClientesFinanceiroFolhaPonto
+       fields = '__all__'

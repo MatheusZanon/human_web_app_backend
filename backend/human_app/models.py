@@ -81,6 +81,18 @@ class ClientesFinanceiroReembolsos(models.Model):
     class Meta:
         db_table = 'clientes_financeiro_reembolsos'
 
+class ClientesFinanceiroFolhaPonto(models.Model):
+    cliente = models.ForeignKey(to=ClientesFinanceiro, 
+                                   on_delete=models.CASCADE,
+                                   related_name='folha_ponto')
+    registrado = models.BooleanField(default=False)
+    colaborador = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'clientes_financeiro_folha_ponto'
+
 class Robos(models.Model):
     nome = models.CharField(max_length=50, blank=True, null=True)
     categoria = models.CharField(max_length=50, blank=True, null=True)
