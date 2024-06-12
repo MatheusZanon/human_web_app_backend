@@ -62,12 +62,18 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
                 cliente_data['email'] = request.data['email']
             if 'cnpj' in request.data:
                 cliente_data['cnpj'] = request.data['cnpj']
+                if cliente.cpf:
+                    cliente_data['cpf'] = None
             if 'cpf' in request.data:
                 cliente_data['cpf'] = request.data['cpf']
+                if cliente.cnpj:
+                    cliente_data['cnpj'] = None
             if 'phone' in request.data:
                 cliente_data['phone'] = request.data['phone']
             if 'regiao' in request.data:
                 cliente_data['regiao'] = request.data['regiao']
+
+            print(cliente_data)
 
             # Validar e salvar Cliente
             cliente_serializer = ClientesFinanceiroSerializer(cliente, data=cliente_data, partial=True)
