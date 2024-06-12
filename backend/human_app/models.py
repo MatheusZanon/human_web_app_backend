@@ -3,7 +3,7 @@ from django.contrib.auth.models import User
 
 # Create your models here.
 class Funcionarios(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='funcionarios', blank=False, null=False)
     rg = models.CharField(max_length=8, blank=True, null=True)
     cpf = models.CharField(max_length=11, blank=True, null=True)
     telefone_celular = models.CharField(max_length=25, blank=True, null=True)
@@ -15,7 +15,7 @@ class Funcionarios(models.Model):
         db_table = 'funcionarios'
 
 class ClientesFinanceiro(models.Model):
-    nome_razao_social = models.CharField(max_length=255)
+    nome_razao_social = models.CharField(max_length=255, blank=False, null=False)
     nome_fantasia = models.CharField(max_length=255, blank=True, null=True)
     cnpj = models.CharField(max_length=25, blank=True, null=True)
     cpf = models.CharField(max_length=25, blank=True, null=True)
@@ -32,8 +32,7 @@ class ClientesFinanceiro(models.Model):
 class ClientesFinanceiroValores(models.Model):
     cliente = models.ForeignKey(to=ClientesFinanceiro, 
                                    on_delete=models.CASCADE, 
-                                   related_name='valores',
-                                   null=True, blank=True)
+                                   related_name='valores', blank=False, null=False)
     cod_empresa = models.IntegerField(blank=True, null=True)
     convenio_farmacia = models.FloatField(blank=True, null=True)
     adiant_salarial = models.FloatField(blank=True, null=True)
@@ -69,8 +68,7 @@ class ClientesFinanceiroValores(models.Model):
 class ClientesFinanceiroReembolsos(models.Model):
     cliente = models.ForeignKey(to=ClientesFinanceiro, 
                                    on_delete=models.CASCADE,
-                                   related_name='reembolsos',
-                                   null=True, blank=True)
+                                   related_name='reembolsos', blank=False, null=False)
     descricao = models.CharField(max_length=255, blank=True, null=True)
     valor = models.FloatField(blank=True, null=True)
     mes = models.IntegerField()
@@ -84,7 +82,7 @@ class ClientesFinanceiroReembolsos(models.Model):
 class ClientesFinanceiroFolhaPonto(models.Model):
     cliente = models.ForeignKey(to=ClientesFinanceiro, 
                                    on_delete=models.CASCADE,
-                                   related_name='folha_ponto')
+                                   related_name='folha_ponto', blank=False, null=False)
     registrado = models.BooleanField(default=False)
     colaborador = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -94,7 +92,7 @@ class ClientesFinanceiroFolhaPonto(models.Model):
         db_table = 'clientes_financeiro_folha_ponto'
 
 class Robos(models.Model):
-    nome = models.CharField(max_length=50, blank=True, null=True)
+    nome = models.CharField(max_length=50, unique=True, blank=False, null=False)
     categoria = models.CharField(max_length=50, blank=True, null=True)
     descricao = models.CharField(max_length=255, blank=True, null=True)
     execucoes = models.IntegerField(default=0)
@@ -131,8 +129,7 @@ class Parametros(models.Model):
 class RobosParametros(models.Model):
     robo = models.ForeignKey(to=Robos,
                                    on_delete=models.CASCADE,
-                                   related_name='parametros',
-                                   null=False, blank=False)
+                                   related_name='parametros', blank=False, null=False)
     parametro = models.ForeignKey(to=Parametros,
                                    on_delete=models.CASCADE,
                                    related_name='robos',
@@ -147,8 +144,7 @@ class Rotinas(models.Model):
     nome = models.CharField(max_length=255)
     robo = models.ForeignKey(to=Robos,
                             on_delete=models.CASCADE,
-                            related_name='rotinas',
-                            null=False, blank=False)
+                            related_name='rotinas', blank=False, null=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
