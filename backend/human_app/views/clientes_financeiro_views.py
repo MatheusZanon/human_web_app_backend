@@ -119,27 +119,45 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
 
             if nome_razao_social and cnpj or nome_razao_social and cpf or cnpj and cpf or nome_razao_social and cnpj and cpf:
                 return Response({"error": "Por favor, insira apenas um dos seguintes filtros 'nome_razao_social', 'cnpj', 'cpf'"}, status=status.HTTP_400_BAD_REQUEST)
-
+            
             if nome_razao_social:
-                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__is_active=True, cliente__nome_razao_social=nome_razao_social)
+                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__nome_razao_social=nome_razao_social)
 
-                serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
-                if serializer:
-                    return Response(serializer.data, status=status.HTTP_200_OK)
+                if not folha_ponto.cliente.is_active:
+                    return Response({"error": "Cliente inativo"}, status=status.HTTP_404_NOT_FOUND)
+
+                if folha_ponto:
+                    serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
+                    if serializer:
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
             
             if cnpj:
-                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__is_active=True, cliente__cnpj=cnpj)
+                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__cnpj=cnpj)
 
-                serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
-                if serializer:
-                    return Response(serializer.data, status=status.HTTP_200_OK)
+                if not folha_ponto.cliente.is_active:
+                    return Response({"error": "Cliente inativo"}, status=status.HTTP_404_NOT_FOUND)
+
+                if folha_ponto:
+                    serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
+                    if serializer:
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
 
             if cpf:
-                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__is_active=True, cliente__cpf=cpf)
+                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__cpf=cpf)
 
-                serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
-                if serializer:
-                    return Response(serializer.data, status=status.HTTP_200_OK)
+                if not folha_ponto.cliente.is_active:
+                    return Response({"error": "Cliente inativo"}, status=status.HTTP_404_NOT_FOUND)
+
+                if folha_ponto:
+                    serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
+                    if serializer:
+                        return Response(serializer.data, status=status.HTTP_200_OK)
+                else:
+                    return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
                         
             folha_ponto = ClientesFinanceiroFolhaPonto.objects.filter(cliente__is_active=True).order_by('cliente__nome_razao_social')
             
