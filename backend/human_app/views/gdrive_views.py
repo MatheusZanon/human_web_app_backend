@@ -49,6 +49,17 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
             folder_name = request.data.get('folder_name')
             parents = request.data.get('parents')
+
+            if not folder_name or not parents:
+                return Response("Nome da pasta e ID do diretório pai são obrigatórios.", status=status.HTTP_400_BAD_REQUEST)
+
+            query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and '{parents}' in parents and trashed = false"
+            results = service.files().list(q=query, spaces='drive', fields='files(id, name)').execute()
+            items = results.get('files', [])
+
+            if items:
+                return Response("Pasta já existe.", status=status.HTTP_400_BAD_REQUEST)
+
             folder_metadata = {
                 'name': folder_name,
                 'mimeType': 'application/vnd.google-apps.folder',
