@@ -42,29 +42,20 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-        
-    @xframe_options_exempt
-    @action(detail=False, methods=['get'], url_path='serve_file_preview')
-    def serve_file_preview(self, request):
+    
+    @action(detail=False, methods=['post'], url_path='criar_pasta')
+    def criar_pastas(self, request):
         try:
-            arquivo_id = request.query_params.get('arquivo_id')
-            print("Arquivo ID:", arquivo_id)
             service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
-            
-            file_info = service.files().get(fileId=arquivo_id, fields='name, mimeType').execute()
-            mimeType = file_info.get('mimeType')
-            filename = file_info.get('name')
-
-            request = service.files().get_media(fileId=arquivo_id)
-            file_io = io.BytesIO()
-            downloader = MediaIoBaseDownload(file_io, request)
-
-            done = False
-            while not done:
-                _, done = downloader.next_chunk()
-            file_io.seek(0)
-
-            return FileResponse(file_io, as_attachment=False, filename=filename, content_type=mimeType)
+            folder_name = request.data.get('folder_name')
+            parents = request.data.get('parents')
+            folder_metadata = {
+                'name': folder_name,
+                'mimeType': 'application/vnd.google-apps.folder',
+                'parents': [parents]
+            }
+            folder = service.files().create(body=folder_metadata, fields='id').execute()
+            return Response("Pasta criada com sucesso.", status=status.HTTP_200_OK)
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -113,6 +104,7 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             done = False
             while not done:
                 download_status, done = downloader.next_chunk()
+                print(f"Download {int(download_status.progress() * 100)}%")
 
             file_io.seek(0)
             file_metadata = service.files().get(fileId=file_id, fields="name, mimeType").execute()
@@ -121,6 +113,32 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
             response = HttpResponse(file_io.read(), content_type=file_metadata.get('mimeType'))
             response['Content-Length'] = len(file_io.getvalue())  # Adicionar o tamanho do arquivo
             return response
+        except Exception as error:
+            print(error)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @xframe_options_exempt
+    @action(detail=False, methods=['get'], url_path='serve_file_preview')
+    def serve_file_preview(self, request):
+        try:
+            arquivo_id = request.query_params.get('arquivo_id')
+            print("Arquivo ID:", arquivo_id)
+            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
+            
+            file_info = service.files().get(fileId=arquivo_id, fields='name, mimeType').execute()
+            mimeType = file_info.get('mimeType')
+            filename = file_info.get('name')
+
+            request = service.files().get_media(fileId=arquivo_id)
+            file_io = io.BytesIO()
+            downloader = MediaIoBaseDownload(file_io, request)
+
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+            file_io.seek(0)
+
+            return FileResponse(file_io, as_attachment=False, filename=filename, content_type=mimeType)
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
