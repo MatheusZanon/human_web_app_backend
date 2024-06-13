@@ -1,6 +1,7 @@
 import os
 import io
 import tempfile
+from datetime import datetime
 from dotenv import load_dotenv
 from operator import itemgetter
 from human_app.services.google_drive_service import Create_Service
@@ -30,8 +31,8 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='listar_arquivos')
     def listar_arquivos(self, request):
         try:    
-            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
             folder_id = request.query_params.get('folder_id')
+            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
             query = f"parents in '{folder_id}'"
 
             response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, parents, modifiedTime)").execute()
@@ -99,6 +100,31 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
         except Exception as error:
             print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+    @action(detail=False, methods=['post'], url_path='upload_extrato_robo')
+    def upload_extrato_robo(self, request):
+        try:
+            folder_id = request.query_params.get('folder_id')
+            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
+            query = f"parents in '{folder_id}'"
+
+            response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType)").execute()
+            arquivos = response.get('files', [])
+            for arquivo in arquivos:
+                if (arquivo['mimeType'] == 'application/vnd.google-apps.folder'
+                and arquivo['name'].__contains__(f"faturas_human_{datetime.now().strftime('%Y')}_{datetime.now().strftime('%m')}")):
+                    folder_metadata = {
+                        'name': 'novos_extratos',
+                        'mimeType': 'application/vnd.google-apps.folder',
+                        'parents': [arquivo['id']]
+                    }
+                    folder = service.files().create(body=folder_metadata, fields='id').execute()
+                    print(folder)
+                    
+            return Response("Arquivos enviados com sucesso.", status=status.HTTP_200_OK)
+        except Exception as error:
+            print(error)
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
     @action(detail=False, methods=['get'], url_path='download_arquivo')
     def download_arquivo(self, request):
@@ -133,7 +159,6 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
     def serve_file_preview(self, request):
         try:
             arquivo_id = request.query_params.get('arquivo_id')
-            print("Arquivo ID:", arquivo_id)
             service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
             
             file_info = service.files().get(fileId=arquivo_id, fields='name, mimeType').execute()
