@@ -113,52 +113,6 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='folha_ponto')
     def listar_folha_ponto(self, request):
         try:
-            nome_razao_social = request.query_params.get('nome_razao_social')
-            cnpj = request.query_params.get('cnpj')
-            cpf = request.query_params.get('cpf')
-
-            if nome_razao_social and cnpj or nome_razao_social and cpf or cnpj and cpf or nome_razao_social and cnpj and cpf:
-                return Response({"error": "Por favor, insira apenas um dos seguintes filtros 'nome_razao_social', 'cnpj', 'cpf'"}, status=status.HTTP_400_BAD_REQUEST)
-            
-            if nome_razao_social:
-                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__nome_razao_social=nome_razao_social)
-
-                if not folha_ponto.cliente.is_active:
-                    return Response({"error": "Cliente inativo"}, status=status.HTTP_404_NOT_FOUND)
-
-                if folha_ponto:
-                    serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
-                    if serializer:
-                        return Response(serializer.data, status=status.HTTP_200_OK)
-                else:
-                    return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
-            
-            if cnpj:
-                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__cnpj=cnpj)
-
-                if not folha_ponto.cliente.is_active:
-                    return Response({"error": "Cliente inativo"}, status=status.HTTP_404_NOT_FOUND)
-
-                if folha_ponto:
-                    serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
-                    if serializer:
-                        return Response(serializer.data, status=status.HTTP_200_OK)
-                else:
-                    return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
-
-            if cpf:
-                folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente__cpf=cpf)
-
-                if not folha_ponto.cliente.is_active:
-                    return Response({"error": "Cliente inativo"}, status=status.HTTP_404_NOT_FOUND)
-
-                if folha_ponto:
-                    serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto)
-                    if serializer:
-                        return Response(serializer.data, status=status.HTTP_200_OK)
-                else:
-                    return Response({"error": "Cliente não possui registro para gerar folha"}, status=status.HTTP_404_NOT_FOUND)
-                        
             folha_ponto = ClientesFinanceiroFolhaPonto.objects.filter(cliente__is_active=True).order_by('cliente__nome_razao_social')
             
             page = self.paginate_queryset(folha_ponto)
@@ -185,25 +139,63 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
+    @action(detail=False, methods=['post'], url_path='folha_ponto/criar')
+    def create_folhas_ponto(self, request):
+        try:
+            ids = request.data.get('id_clientes')
+            results = [];
+            success = 0;
+            errors = 0;
+
+            if not ids:
+                return Response({"error": "O campo 'clientes' é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+
+            for id in ids:
+                data = {
+                    'cliente_id': id,
+                    'registrado': False,
+                    'colaborador:': False
+                }
+
+                if ClientesFinanceiroFolhaPonto.objects.filter(cliente=id).exists():
+                    results.append({"status": "error", "code": 400, "id": int(id), "error": "O cliente selecionado possui um registo de folha de ponto criada!"})
+                    continue
+
+                folha_ponto_serializer = ClienteFinanceiroFolhaPontoSerializer(data=data)
+                if folha_ponto_serializer.is_valid():
+                    folha_ponto_serializer.save()
+                    results.append({"status": "success", "code": 200, "id": int(id), "data": folha_ponto_serializer.data})
+                    success += 1
+                else:
+                    results.append({"status": "error", "code": 400, "id": int(id), "error": folha_ponto_serializer.errors})
+                    errors += 1
+            
+            if not results:
+                return Response({"error": "Nenhum cliente foi encontrado"}, status=status.HTTP_404_NOT_FOUND)
+            
+            if errors > 0 and success > 0:
+                return Response(results, status=status.HTTP_207_MULTI_STATUS)
+            
+            if errors > 0 and success == 0:
+                return Response(results, status=status.HTTP_400_BAD_REQUEST)
+
+            return Response(results, status=status.HTTP_200_OK)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
     @action(detail=True, methods=['post'], url_path='folha_ponto/criar')
     def create_folha_ponto(self, request, pk=None):
         try:
-            data = {
-                'cliente': pk,
-            }
-
-            if not 'registrado' in request.data:
-                return Response({"error": "O campo 'registrado' é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
-            data['registrado'] = request.data['registrado']
-            
-            if not 'colaborador' in request.data:
-                return Response({"error": "O campo 'colaborador' é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
-            data['colaborador'] = request.data['colaborador']
-
-            folha_ponto_serializer = ClienteFinanceiroFolhaPontoSerializer(data=data)
-
             if ClientesFinanceiroFolhaPonto.objects.filter(cliente=pk).exists():
                 return Response({"error": "O  já possui um registo de folha de ponto criada!"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            data = {
+                'cliente_id': pk,
+                'registrado': False,
+                'colaborador:': False
+            }
+
+            folha_ponto_serializer = ClienteFinanceiroFolhaPontoSerializer(data=data)
 
             if folha_ponto_serializer.is_valid():
                 folha_ponto_serializer.save()
@@ -216,8 +208,22 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     @action(detail=True, methods=['put'], url_path='folha_ponto/atualizar')
     def update_folha_ponto(self, request, pk=None):
         try:
+            id = request.data.get('id')
+
+            if not id:
+                return Response({"error": "O campo 'id' é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if not ClientesFinanceiroFolhaPonto.objects.filter(id=id).exists():
+                return Response({"error": "O cliente selecionado não possui um registo de folha de ponto criada!"}, status=status.HTTP_400_BAD_REQUEST)
+            
+            data = {
+                'id': id,
+                'registrado': request.data.get('registrado'),
+                'colaborador': request.data.get('colaborador'),
+            }
+            
             folha_ponto = ClientesFinanceiroFolhaPonto.objects.get(cliente=pk)
-            folha_ponto_serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto, data=request.data, partial=True)
+            folha_ponto_serializer = ClienteFinanceiroFolhaPontoSerializer(folha_ponto, data=data, partial=True)
             if folha_ponto_serializer.is_valid():
                 folha_ponto_serializer.save()
                 return Response(folha_ponto_serializer.data, status=status.HTTP_200_OK)
@@ -233,6 +239,7 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
             folha_ponto.delete()
             return Response(status=status.HTTP_200_OK)
         except Exception as error:
+            print(error)
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @permission_classes([IsAuthenticated])

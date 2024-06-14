@@ -29,6 +29,15 @@ class DashboardViewset(viewsets.ModelViewSet):
     def clientesFinanceiro(self, request):
         try:
             clientes_financeiro = ClientesFinanceiro.objects.all()
+
+            is_active = request.query_params.get('is_active')
+            folha_ponto = request.query_params.get('folha_ponto')
+
+            if is_active != 'null' and folha_ponto != 'null':
+                is_active = True if is_active == 'true' else False
+                folha_ponto = True if folha_ponto == 'true' else False
+                clientes_financeiro = clientes_financeiro.filter(is_active=is_active).exclude(folha_ponto__isnull=folha_ponto).distinct()
+                
             serializer = ClientesFinanceiroSerializer(clientes_financeiro, many=True)
             
             if serializer:
