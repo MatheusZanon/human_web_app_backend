@@ -78,7 +78,12 @@ class ClientesFinanceiroReembolsosSerializer(serializers.ModelSerializer):
         return representation
 
 class ClienteFinanceiroFolhaPontoSerializer(serializers.ModelSerializer):
-    cliente = ClientesFinanceiroSerializer()
+    cliente = ClientesFinanceiroSerializer(read_only=True)
+    cliente_id = serializers.PrimaryKeyRelatedField(queryset=ClientesFinanceiro.objects.all(), write_only=True, source='cliente')
     class Meta:
        model = ClientesFinanceiroFolhaPonto
        fields = '__all__'
+       extra_kwargs = {
+           'cliente': {'required': False},
+           'cliente_id': {'required': True}
+       }
