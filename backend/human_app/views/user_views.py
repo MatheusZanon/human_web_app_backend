@@ -2,9 +2,14 @@ from rest_framework.views import Response
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from django.core.mail import send_mail
 from django.contrib.auth.models import Group
-from human_app.models import User, Funcionarios
-from ..serializers import UserSerializer, FuncionariosSerializer, GroupSerializer
+from django.utils.crypto import get_random_string
+from django.urls import reverse
+from django.conf import settings
+import os
+from human_app.models import User, Funcionarios, PasswordResetTokens
+from ..serializers import UserSerializer, FuncionariosSerializer, GroupSerializer, PasswordResetTokenSerializer
 
 class UserViewset(viewsets.ModelViewSet):
     queryset = User.objects.all()    
@@ -50,6 +55,72 @@ class UserViewset(viewsets.ModelViewSet):
                 return Response(user_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+    
+    @action(detail=False, methods=['post'], url_path='forgot-password')
+    def forgot_password(self, request):
+        email = request.data.get('email')
+        expires_in = int(request.data.get('expires_in', 900))  # Default 15 minutos de expiração
+        
+        if not email:
+            return Response({'error': 'Email obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'error': 'Usuário não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        token = get_random_string(length=32)
+        token_data = {
+            'user': user.pk,
+            'token': token,
+            'expires_in': expires_in
+        }
+
+        print(token_data)
+
+        token_serializer = PasswordResetTokenSerializer(data=token_data)
+
+        if token_serializer.is_valid():
+            token_serializer.save()
+            reset_url = request.build_absolute_uri(
+                reverse('user-reset-password') + f"?token={token}"
+            )
+            frontend_url = os.getenv('FRONTEND_URL')
+            reset_front_url = f"{frontend_url}/reset-password?token={token}"
+            send_mail(
+                'Recuperação de senha',
+                f'Por favor clique no link abaixo para redefinir sua senha: {reset_front_url}',
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+            )
+
+            return Response({'message': 'Email enviado com sucesso.'}, status=status.HTTP_200_OK)
+        else:
+            print(token_serializer.errors)
+            return Response(token_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['post'], url_path='reset-password')
+    def reset_password(self, request):
+        token = request.query_params.get('token')
+        new_password = request.data.get('new_password')
+
+        if not all([token, new_password]):
+            return Response({'error': 'Token e senha obrigatórias.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            reset_token = PasswordResetTokens.objects.get(token=token)
+
+            if not reset_token.is_valid():
+                return Response({'error': 'Token inválido ou expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+        except PasswordResetTokens.DoesNotExist:
+            return Response({'error': 'Token não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+        
+        user = reset_token.user
+        user.set_password(new_password)
+        user.save()
+
+        return Response({'message': 'Senha redefinida com sucesso.'}, status=status.HTTP_200_OK)
+
 
 @permission_classes([IsAuthenticated])
 class GroupsViewSet(viewsets.ModelViewSet):
