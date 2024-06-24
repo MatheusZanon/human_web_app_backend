@@ -16,11 +16,10 @@ class Funcionarios(models.Model):
         db_table = 'funcionarios'
 
 class PasswordResetTokens(models.Model):
-    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset_tokens', blank=False, null=False)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset', blank=False, null=False)
     token = models.CharField(max_length=255, blank=False, null=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
     expires_in = models.IntegerField(default=900)
-    is_used = models.BooleanField(default=False)
 
     def __str__(self):
         return self.token
@@ -30,7 +29,7 @@ class PasswordResetTokens(models.Model):
         return timezone.now() < expiration_time and not self.is_used
 
     class Meta:
-        db_table = 'password_reset_tokens'
+        db_table = 'password_reset'
 
 class ClientesFinanceiro(models.Model):
     nome_razao_social = models.CharField(max_length=255, blank=False, null=False)

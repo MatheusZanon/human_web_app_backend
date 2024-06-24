@@ -118,6 +118,7 @@ class UserViewset(viewsets.ModelViewSet):
         user = reset_token.user
         user.set_password(new_password)
         user.save()
+        reset_token.delete()
 
         return Response({'message': 'Senha redefinida com sucesso.'}, status=status.HTTP_200_OK)
 
