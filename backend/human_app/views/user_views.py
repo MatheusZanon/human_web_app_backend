@@ -106,8 +106,6 @@ se não solicitou esta redefinição, ignore este email.''',
         try:
             reset_token = PasswordResetTokens.objects.get(token=token)
 
-            print(reset_token)
-
             if not reset_token.is_valid():
                 reset_token.delete()
                 return Response('Token inválido ou expirado.', status=status.HTTP_400_BAD_REQUEST)
