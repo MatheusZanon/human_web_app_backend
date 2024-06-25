@@ -93,7 +93,6 @@ se não solicitou esta redefinição, ignore este email.''',
 
             return Response({'message': 'Email enviado com sucesso.'}, status=status.HTTP_200_OK)
         else:
-            print(token_serializer.errors)
             return Response(token_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['post'], url_path='reset-password')
@@ -105,7 +104,6 @@ se não solicitou esta redefinição, ignore este email.''',
             return Response('Token e senha obrigatórias.', status=status.HTTP_400_BAD_REQUEST)
 
         try:
-            print(token)
             reset_token = PasswordResetTokens.objects.get(token=token)
 
             print(reset_token)
