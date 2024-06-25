@@ -19,14 +19,13 @@ class PasswordResetTokens(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='password_reset', blank=False, null=False)
     token = models.CharField(max_length=255, blank=False, null=False, unique=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    expires_in = models.IntegerField(default=900)
+    expires_in = models.DateTimeField(null=False, blank=False)
 
     def __str__(self):
         return self.token
     
     def is_valid(self):
-        expiration_time = self.created_at + timezone.timedelta(seconds=self.expires_in)
-        return timezone.now() < expiration_time and not self.is_used
+        return timezone.now() < self.expires_in
 
     class Meta:
         db_table = 'password_reset'

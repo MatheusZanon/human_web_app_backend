@@ -59,37 +59,34 @@ class UserViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='forgot-password')
     def forgot_password(self, request):
         email = request.data.get('email')
-        expires_in = int(request.data.get('expires_in', 900))  # Default 15 minutos de expiração
         
         if not email:
-            return Response({'error': 'Email obrigatório.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response('Email obrigatório.', status=status.HTTP_400_BAD_REQUEST)
         
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({'error': 'Usuário não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response('Usuário não encontrado.', status=status.HTTP_404_NOT_FOUND)
         
         token = get_random_string(length=32)
         token_data = {
             'user': user.pk,
             'token': token,
-            'expires_in': expires_in
         }
-
-        print(token_data)
 
         token_serializer = PasswordResetTokenSerializer(data=token_data)
 
         if token_serializer.is_valid():
             token_serializer.save()
-            reset_url = request.build_absolute_uri(
-                reverse('user-reset-password') + f"?token={token}"
-            )
+            # reset_url = request.build_absolute_uri(
+            #    reverse('user-reset-password') + f"?token={token}"
+            # )
             frontend_url = os.getenv('FRONTEND_URL')
             reset_front_url = f"{frontend_url}/reset-password?token={token}"
             send_mail(
                 'Recuperação de senha',
-                f'Por favor clique no link abaixo para redefinir sua senha: {reset_front_url}',
+                f'''Por favor clique no link abaixo para redefinir sua senha: {reset_front_url}
+se não solicitou esta redefinição, ignore este email.''',
                 settings.DEFAULT_FROM_EMAIL,
                 [email],
             )
@@ -105,15 +102,19 @@ class UserViewset(viewsets.ModelViewSet):
         new_password = request.data.get('new_password')
 
         if not all([token, new_password]):
-            return Response({'error': 'Token e senha obrigatórias.'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response('Token e senha obrigatórias.', status=status.HTTP_400_BAD_REQUEST)
 
         try:
+            print(token)
             reset_token = PasswordResetTokens.objects.get(token=token)
 
+            print(reset_token)
+
             if not reset_token.is_valid():
-                return Response({'error': 'Token inválido ou expirado.'}, status=status.HTTP_400_BAD_REQUEST)
+                reset_token.delete()
+                return Response('Token inválido ou expirado.', status=status.HTTP_400_BAD_REQUEST)
         except PasswordResetTokens.DoesNotExist:
-            return Response({'error': 'Token não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response('Token não encontrado.', status=status.HTTP_404_NOT_FOUND)
         
         user = reset_token.user
         user.set_password(new_password)

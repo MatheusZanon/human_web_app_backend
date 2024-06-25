@@ -29,3 +29,8 @@ class PasswordResetTokenSerializer(serializers.ModelSerializer):
     class Meta:
         model = PasswordResetTokens
         fields = '__all__'
+        read_only_fields = ['created_at', 'expires_in']
+    
+    def create(self, validated_data):
+        validated_data['expires_in'] = timezone.now() + timezone.timedelta(minutes=15)
+        return super().create(validated_data)
