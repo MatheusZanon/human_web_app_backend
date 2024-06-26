@@ -3,6 +3,7 @@
 !.env.example
 
 **/__pycache__
+**/federation_config.json
 
 client_secrets.json
 secret_service.json

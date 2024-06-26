@@ -32,7 +32,7 @@ class GoogleDriveViewSet(viewsets.ModelViewSet):
     def listar_arquivos(self, request):
         try:    
             folder_id = request.query_params.get('folder_id')
-            service = Create_Service(SECRET_SERVICE_FILE, API_NAME, API_VERSION, SCOPES)
+            service = Create_Service()
             query = f"parents in '{folder_id}'"
 
             response = service.files().list(q=query, fields="nextPageToken, files(id, name, mimeType, parents, modifiedTime)").execute()

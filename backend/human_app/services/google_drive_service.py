@@ -1,21 +1,31 @@
 import os
-from google.oauth2 import service_account
-from googleapiclient.discovery import build
-from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
+from google.auth import identity_pool, external_account, load_credentials_from_file
 from google.auth.transport.requests import Request
+from googleapiclient.discovery import build
 
-
-def Create_Service(secret_service_file, api_name, api_version, *scopes):
-    #print(f"Secret Service File: {secret_service_file}, API Name: {api_name}, API Version: {api_version}, Scopes: {scopes}")
-    SCOPES = [scope for scope in scopes[0]]
-    credentials = service_account.Credentials.from_service_account_file(
-        secret_service_file, scopes=SCOPES)
-
+def Create_Service():
+    # Path to the JSON file with the federation configuration
+    current_directory = os.path.dirname(__file__)
+    
+    # Path to the JSON file with the federation configuration
+    federation_config_file = os.path.join(current_directory, 'federation_config.json')
     try:
-        service = build(api_name, api_version, credentials=credentials)
-        print(f'{api_name} service created successfully')
+        # Load the external account credentials
+        credentials, project = load_credentials_from_file(federation_config_file)
+
+        # Define the scopes required for accessing Google Drive API
+        SCOPES = ['https://www.googleapis.com/auth/drive']
+        
+         # Ensure credentials have the required scopes
+        credentials = credentials.with_scopes(SCOPES)
+        
+        # Refresh the credentials to obtain a valid token
+        credentials.refresh(Request())
+        
+        # Build the service object for the Google Drive API
+        service = build('drive', 'v3', credentials=credentials)
+        
         return service
+
     except Exception as e:
-        print('Unable to connect.')
-        print(e)
-        return None
+        print(f"An error occurred: {e}")
