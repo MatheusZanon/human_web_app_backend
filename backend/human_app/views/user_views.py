@@ -78,9 +78,6 @@ class UserViewset(viewsets.ModelViewSet):
 
         if token_serializer.is_valid():
             token_serializer.save()
-            # reset_url = request.build_absolute_uri(
-            #    reverse('user-reset-password') + f"?token={token}"
-            # )
             frontend_url = os.getenv('FRONTEND_URL')
             reset_front_url = f"{frontend_url}/reset-password?token={token}"
             send_mail(
