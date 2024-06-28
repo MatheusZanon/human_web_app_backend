@@ -143,9 +143,9 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
     def create_folhas_ponto(self, request):
         try:
             ids = request.data.get('id_clientes')
-            results = [];
-            success = 0;
-            errors = 0;
+            results = []
+            success = 0
+            errors = 0
 
             if not ids:
                 return Response({"error": "O campo 'clientes' é obrigatório"}, status=status.HTTP_400_BAD_REQUEST)
@@ -359,6 +359,7 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
                     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
             else:
                 # Vale não existe, cria-lo
+                data['cliente'] = cliente.id
                 serializer = ClientesFinanceiroValoresSerializer(data=data)
                 if serializer.is_valid():
                     serializer.save(cliente=cliente)
