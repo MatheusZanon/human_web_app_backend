@@ -56,10 +56,9 @@ class UserViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response({'error': str(error)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
     
-    @action(detail=False, methods=['post'], url_path='forgot-password')
+    @action(detail=False, methods=['post'], url_path='forgot_password')
     def forgot_password(self, request):
         email = request.data.get('email')
-        
         if not email:
             return Response('Email obrigatório.', status=status.HTTP_400_BAD_REQUEST)
         
@@ -92,7 +91,7 @@ se não solicitou esta redefinição, ignore este email.''',
         else:
             return Response(token_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    @action(detail=False, methods=['post'], url_path='reset-password')
+    @action(detail=False, methods=['post'], url_path='reset_password')
     def reset_password(self, request):
         token = request.query_params.get('token')
         new_password = request.data.get('new_password')
