@@ -1,0 +1,166 @@
+----------------ADMIN--------------
+> add_user
+> change_user
+> view_user
+
+> add_funcionarios
+> change_funcionarios
+> view_funcionarios
+
+> add_clientesfinanceiro
+> change_clientesfinanceiro
+> view_clientesfinanceiro
+
+> add_clientesfinanceirovalores
+> change_clientesfinanceirovalores
+> delete_clientesfinanceirovalores
+> view_clientesfinanceirovalores
+
+> add_clientesfinanceiroreembolsos
+> change_clientesfinanceiroreembolsos
+> delete_clientesfinanceiroreembolsos
+> view_clientesfinanceiroreembolsos
+
+> change_robos
+> view_robos
+
+> add_parametros
+> change_parametros
+> delete_parametros
+> view_parametros
+
+> add_robosparametros
+> change_robosparametros
+> delete_robosparametros
+> view_robosparametros
+
+> add_rotinas
+> change_rotinas
+> delete_rotinas
+> view_rotinas
+
+-------------------TI-------------------
+> add_user
+> change_user
+> view_user
+
+> add_funcionarios
+> change_funcionarios
+> view_funcionarios
+
+> add_clientesfinanceiro
+> change_clientesfinanceiro
+> view_clientesfinanceiro
+
+> add_clientesfinanceirovalores
+> change_clientesfinanceirovalores
+> delete_clientesfinanceirovalores
+> view_clientesfinanceirovalores
+
+> add_clientesfinanceiroreembolsos
+> change_clientesfinanceiroreembolsos
+> delete_clientesfinanceiroreembolsos
+> view_clientesfinanceiroreembolsos
+
+> add_robos
+> change_robos
+> delete_robos
+> view_robos
+
+> add_parametros
+> change_parametros
+> delete_parametros
+> view_parametros
+
+> add_robosparametros
+> change_robosparametros
+> delete_robosparametros
+> view_robosparametros
+
+> add_rotinas
+> change_rotinas
+> delete_rotinas
+> view_rotinas
+
+
+--------------FINANCEIRO_OPERACAO-----------
+> view_clientesfinanceiro
+
+> add_clientesfinanceirovalores
+> change_clientesfinanceirovalores
+> view_clientesfinanceirovalores
+
+> add_clientesfinanceiroreembolsos
+> change_clientesfinanceiroreembolsos
+> view_clientesfinanceiroreembolsos
+
+> change_robos
+> view_robos
+
+> add_parametros
+> change_parametros
+> delete_parametros
+> view_parametros
+
+> add_robosparametros
+> change_robosparametros
+> delete_robosparametros
+> view_robosparametros
+
+> add_rotinas
+> change_rotinas
+> delete_rotinas
+> view_rotinas
+
+-----------------RH_GERENCIA------------------
+> add_user
+> change_user
+> view_user
+
+> add_funcionarios
+> change_funcionarios
+> view_funcionarios
+
+> change_robos
+> view_robos
+
+> add_parametros
+> change_parametros
+> delete_parametros
+> view_parametros
+
+> add_robosparametros
+> change_robosparametros
+> delete_robosparametros
+> view_robosparametros
+
+> add_rotinas
+> change_rotinas
+> delete_rotinas
+> view_rotinas
+
+------------------RH_OPERACAO---------------
+> change_user
+> view_user
+
+> change_funcionarios
+> view_funcionarios
+
+> change_robos
+> view_robos
+
+> add_parametros
+> change_parametros
+> delete_parametros
+> view_parametros
+
+> add_robosparametros
+> change_robosparametros
+> delete_robosparametros
+> view_robosparametros
+
+> add_rotinas
+> change_rotinas
+> delete_rotinas
+> view_rotinas
+
