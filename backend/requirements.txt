@@ -1,4 +1,6 @@
+git-filter-repo
 django
+django-filter
 djangorestframework
 djangorestframework-simplejwt
 django-cors-headers
@@ -8,7 +10,6 @@ mysqlclient
 mysql-connector-python
 Faker
 requests
-django-filter
 google-auth 
 google-auth-oauthlib 
 google-auth-httplib2 
