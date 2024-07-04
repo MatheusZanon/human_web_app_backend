@@ -251,7 +251,6 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=True, methods=['get'], url_path='profile')
     def profile(self, request, pk=None):
         try:
-            print(request.user)
             cliente = ClientesFinanceiro.objects.get(id=pk)
             serializer = ClientesFinanceiroSerializer(cliente)
             if serializer.is_valid():
@@ -437,7 +436,6 @@ class ClientesFinanceiroValoresViewset(viewsets.ModelViewSet):
     @action(detail=False, methods=['delete'], url_path='reembolsos/deletar/(?P<reembolso_pk>[^/.]+)')
     def delete_reembolsos(self, request, reembolso_pk=None):
         try:
-            id = request.data.get('id')
             reembolso = ClientesFinanceiroReembolsos.objects.filter(pk=reembolso_pk).first()
             if reembolso:
                 reembolso.delete()

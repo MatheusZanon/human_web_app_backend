@@ -9,12 +9,10 @@ https://docs.djangoproject.com/en/5.0/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.0/ref/settings/
 """
-
 import os
+from aws_parameters import get_ssm_parameter
 from pathlib import Path
-from dotenv import load_dotenv
 from datetime import timedelta
-from django.core.management.utils import get_random_secret_key
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -81,23 +79,16 @@ WSGI_APPLICATION = 'human_project.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-load_dotenv()
-
-engine = os.getenv('DB_ENGINE')
-name = os.getenv('DB_NAME')
-user = os.getenv('DB_USER')
-password = os.getenv('DB_PASS')
-host = os.getenv('DB_HOST')
-port = os.getenv('DB_PORT')
+DEBUG = get_ssm_parameter('/human/DEBUG', 'False') == 'True'
 
 DATABASES = {
     'default': {
-        'ENGINE': engine,
-        'NAME': name,
-        'USER': user,
-        'PASSWORD': password,
-        'HOST': host,
-        'PORT': port,
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': get_ssm_parameter('/human/DB_NAME'),
+        'USER': get_ssm_parameter('/human/DB_USER'),
+        'PASSWORD': get_ssm_parameter('/human/DB_PASSWORD'),
+        'HOST': get_ssm_parameter('/human/DB_HOST'),
+        'PORT': get_ssm_parameter('/human/DB_PORT', '3306'),
     }
 }
 
@@ -143,15 +134,16 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+BACKEND_EC2_PUBLIC_IP = get_ssm_parameter('/human/BACKEND_EC2_PUBLIC_IP')
+FRONTEND_URL_AWS_DOMAIN = get_ssm_parameter('/human/FRONTEND_URL_AWS_DOMAIN')
+FRONTEND_URL_LOCAL = get_ssm_parameter('/human/FRONTEND_URL_LOCAL')
 
-ALLOWED_HOSTS = ['localhost', '192.168.2.146', '192.168.2.131']
+ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, FRONTEND_URL_AWS_DOMAIN, 'localhost', '127.0.0.1']
 
 CORS_ALLOWED_ORIGINS = [
-    'http://localhost:5173',
-    'http://localhost:4173',
-    'http://127.0.0.1:5173',
-    'http://192.168.2.146:5173',
-    'http://192.168.2.131:5173'
+    BACKEND_EC2_PUBLIC_IP,
+    FRONTEND_URL_AWS_DOMAIN,
+    FRONTEND_URL_LOCAL,  # para desenvolvimento local
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -163,7 +155,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 }
 
-signing_key = os.getenv('SIMPLE_JWT_SIGNING_KEY')
+signing_key = get_ssm_parameter('/human/SIMPLE_JWT_SIGNING_KEY')
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=4),
@@ -176,7 +168,7 @@ SIMPLE_JWT = {
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'access_token',  # Nome do cookie para os tokens
     'AUTH_COOKIE_DOMAIN': None,     # Domínio do cookie
-    'AUTH_COOKIE_SECURE': False,    # True em produção (https)
+    'AUTH_COOKIE_SECURE': True,    # True em produção (https)
     'AUTH_COOKIE_HTTP_ONLY': True,  # Acesso somente HTTP, não acessível por JS
     'AUTH_COOKIE_PATH': '/',        # Caminho do cookie
     'AUTH_COOKIE_SAMESITE': 'Lax',  # Protege contra CSRF
@@ -187,9 +179,9 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
-EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_USER = get_ssm_parameter('/human/EMAIL_USER')
+EMAIL_PASSWORD = get_ssm_parameter('/human/EMAIL_PASSWORD')
+DEFAULT_FROM_EMAIL = EMAIL_USER
 
 """
 LOGGING = {

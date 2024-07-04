@@ -1,32 +1,14 @@
 import os
-import mysql.connector
-from dotenv import load_dotenv
-from mysql.connector import errorcode
-
-load_dotenv()
+from aws_parameters import get_ssm_parameter
 
 def configura_db():    
     db_conf = {
-        "host": os.getenv('DB_HOST'),
-        "user": os.getenv('DB_USER'),
-        "password": os.getenv('DB_PASS'),
-        "database": os.getenv('DB_NAME')
+        "host": get_ssm_parameter('/human/DB_HOST'),
+        "user": get_ssm_parameter('/human/DB_USER'),
+        "password": get_ssm_parameter('/human/DB_PASS'),
+        "database": get_ssm_parameter('/human/DB_NAME')
     }
-
-    try:
-        conn = mysql.connector.connect(**db_conf)
-        cursor = conn.cursor()
-        print(" * Conexão bem sucedida!")
-
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Tem algo de erro com seu nome ou senha.")
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Esse banco não existe!")
-        else:
-            print(err) 
-    
-    return db_conf, conn, cursor
+    return db_conf
 
 def ler_sql(arquivo_sql):
     with open(arquivo_sql, 'r', encoding='utf-8') as arquivo:

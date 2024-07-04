@@ -5,9 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.core.mail import send_mail
 from django.contrib.auth.models import Group
 from django.utils.crypto import get_random_string
-from django.urls import reverse
 from django.conf import settings
-import os
+from aws_parameters import get_ssm_parameter
 from human_app.models import User, Funcionarios, PasswordResetTokens
 from ..serializers import UserSerializer, FuncionariosSerializer, GroupSerializer, PasswordResetTokenSerializer
 
@@ -77,7 +76,7 @@ class UserViewset(viewsets.ModelViewSet):
 
         if token_serializer.is_valid():
             token_serializer.save()
-            frontend_url = os.getenv('FRONTEND_URL')
+            frontend_url = get_ssm_parameter('/human/FRONTEND_URL_LOCAL')
             reset_front_url = f"{frontend_url}/reset-password?token={token}"
             send_mail(
                 'Recuperação de senha',
