@@ -163,6 +163,38 @@ class RobosViewset(viewsets.ModelViewSet):
         except Exception as error:
             return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
+    @action(detail=True, methods=['post'], url_path='parametros/criar-option')
+    def criar_option(self, request, pk=None):
+        try:
+            robo = Robos.objects.get(id=pk)
+        except Robos.DoesNotExist:
+            return Response("O robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            select_id = request.data.get('select_id')
+            select = Parametros.objects.get(id=select_id)
+
+            if select.tipo.lower() != 'select':
+                return Response("O parametro enviado não é um select", status=status.HTTP_400_BAD_REQUEST)
+        except Parametros.DoesNotExist:
+            return Response("O select do robo não foi encontrado", status=status.HTTP_404_NOT_FOUND)
+        
+        try:
+            option_name = request.data.get('option_name')
+            select_option = SelectOptions.objects.filter(parametro=select, nome=option_name)
+
+            if select_option.exists():
+                return Response("A opção desejada já foi criada", status=status.HTTP_400_BAD_REQUEST)
+            
+            option_serializer = SelectOptionsSerializer(data={'parametro': select.pk, 'nome': option_name})
+
+            if option_serializer.is_valid():
+                option_serializer.save()
+
+                return Response(option_serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as error:
+            return Response(f"{error}", status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
     @action(detail=True, methods=['get'], url_path='parametros/listar')
     def listar_parametros(self, request, pk=None):
         try:
@@ -249,10 +281,8 @@ class RobosViewset(viewsets.ModelViewSet):
             
             parametro = None
             for param in robo_parametros:
-                print(param.pk == int(param_pk))
                 if param.pk == int(param_pk):
                     parametro = Parametros.objects.get(pk=param.parametro.pk)
-                    print(parametro.nome)
                     break
 
             if not parametro:
@@ -285,8 +315,6 @@ class RobosViewset(viewsets.ModelViewSet):
             if Rotinas.objects.filter(robo=pk, nome=request_data['nome']).exists():
                 return Response("Esta rotina já foi criada", status=status.HTTP_400_BAD_REQUEST)
             
-            print(request_data)
-
             serializer = RotinasSerializer(data=request_data)
 
             if serializer.is_valid():
