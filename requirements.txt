@@ -1,4 +1,5 @@
 git-filter-repo
+boto3
 django
 django-filter
 djangorestframework

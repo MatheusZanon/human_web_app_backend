@@ -8,3 +8,5 @@
 client_secrets.json
 secret_service.json
 token_drive_v3.pickle
+
+*.pfx
