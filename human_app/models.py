@@ -125,6 +125,7 @@ class Parametros(models.Model):
     TEXT = "TEXT"
     BOOLEAN = "BOOLEAN"
     DATE = "DATE"
+    CENTRO_DE_CUSTO = "CENTRO_DE_CUSTO"
 
     TIPOS = {
         (INTEGER, "INTEGER"),
@@ -132,6 +133,7 @@ class Parametros(models.Model):
         (TEXT, "TEXT"),
         (BOOLEAN, "BOOLEAN"),
         (DATE, "DATE"),
+        (CENTRO_DE_CUSTO, "CENTRO_DE_CUSTO"),
     }
 
     nome = models.CharField(max_length=255, unique=True)
