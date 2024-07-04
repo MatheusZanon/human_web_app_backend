@@ -140,8 +140,8 @@ FRONTEND_URL_AWS_DOMAIN = get_ssm_parameter('/human/FRONTEND_URL_AWS_DOMAIN')
 ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, FRONTEND_URL_AWS_DOMAIN, 'localhost', '127.0.0.1']
 
 CORS_ALLOWED_ORIGINS = [
-    BACKEND_EC2_PUBLIC_IP,
-    FRONTEND_URL_AWS_DOMAIN,
+    f"http://{BACKEND_EC2_PUBLIC_IP}",
+    f"http://{FRONTEND_URL_AWS_DOMAIN}",
     'http://localhost:5173',  # para desenvolvimento local
 ]
 
