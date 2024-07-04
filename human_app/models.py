@@ -126,6 +126,7 @@ class Parametros(models.Model):
     BOOLEAN = "BOOLEAN"
     DATE = "DATE"
     CENTRO_DE_CUSTO = "CENTRO_DE_CUSTO"
+    SELECT = "SELECT"
 
     TIPOS = {
         (INTEGER, "INTEGER"),
@@ -134,6 +135,7 @@ class Parametros(models.Model):
         (BOOLEAN, "BOOLEAN"),
         (DATE, "DATE"),
         (CENTRO_DE_CUSTO, "CENTRO_DE_CUSTO"),
+        (SELECT, "SELECT"),
     }
 
     nome = models.CharField(max_length=255, unique=True)
@@ -168,3 +170,17 @@ class Rotinas(models.Model):
 
     class Meta:
         db_table = 'rotinas'
+
+class SelectOptions(models.Model):
+    nome = models.CharField(max_length=255)
+    parametro = models.ForeignKey(to=Parametros,
+                                on_delete=models.CASCADE,
+                                related_name='select_options', blank=False, null=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'select_options'
+    
+    def __str__(self):
+        return self.nome
