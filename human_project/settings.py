@@ -136,14 +136,13 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 BACKEND_EC2_PUBLIC_IP = get_ssm_parameter('/human/BACKEND_EC2_PUBLIC_IP')
 FRONTEND_URL_AWS_DOMAIN = get_ssm_parameter('/human/FRONTEND_URL_AWS_DOMAIN')
-FRONTEND_URL_LOCAL = get_ssm_parameter('/human/FRONTEND_URL_LOCAL')
 
 ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, FRONTEND_URL_AWS_DOMAIN, 'localhost', '127.0.0.1']
 
 CORS_ALLOWED_ORIGINS = [
     BACKEND_EC2_PUBLIC_IP,
     FRONTEND_URL_AWS_DOMAIN,
-    FRONTEND_URL_LOCAL,  # para desenvolvimento local
+    'http://localhost:5173',  # para desenvolvimento local
 ]
 
 CORS_ALLOW_CREDENTIALS = True

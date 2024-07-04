@@ -76,7 +76,7 @@ class UserViewset(viewsets.ModelViewSet):
 
         if token_serializer.is_valid():
             token_serializer.save()
-            frontend_url = get_ssm_parameter('/human/FRONTEND_URL_LOCAL')
+            frontend_url = get_ssm_parameter('/human/FRONTEND_URL_AWS_DOMAIN')
             reset_front_url = f"{frontend_url}/reset-password?token={token}"
             send_mail(
                 'Recuperação de senha',
