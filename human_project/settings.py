@@ -25,9 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-afojhqv$obqi4%$akoxw-tv-0$s3x!hreywopzp^01%vomz+=4'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
-
-ALLOWED_HOSTS = []
+DEBUG = get_ssm_parameter('/human/DEBUG', 'False') == 'True'
 
 
 # Application definition
@@ -79,7 +77,7 @@ WSGI_APPLICATION = 'human_project.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/5.0/ref/settings/#databases
-DEBUG = get_ssm_parameter('/human/DEBUG', 'False') == 'True'
+
 
 DATABASES = {
     'default': {
@@ -137,9 +135,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 BACKEND_EC2_PUBLIC_IP = get_ssm_parameter('/human/BACKEND_EC2_PUBLIC_IP')
 FRONTEND_URL_AWS_DOMAIN = get_ssm_parameter('/human/FRONTEND_URL_AWS_DOMAIN')
 
-ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, FRONTEND_URL_AWS_DOMAIN, 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, 'localhost', '127.0.0.1']
 CORS_ALLOWED_ORIGINS = [
-    f"http://{BACKEND_EC2_PUBLIC_IP}:8000",
     f"http://{FRONTEND_URL_AWS_DOMAIN}",
     'http://localhost:5173',  # para desenvolvimento local
 ]
