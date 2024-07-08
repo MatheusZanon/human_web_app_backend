@@ -9,6 +9,7 @@ from datetime import datetime
 from time import sleep
 import requests
 import json
+import unicodedata
 
 @permission_classes([IsAuthenticated])
 class RobosViewset(viewsets.ModelViewSet):
@@ -113,8 +114,14 @@ class RobosViewset(viewsets.ModelViewSet):
                 print(f"Os parâmetros do robo são diferentes do enviado. Esperado: {', '.join(parametros_testados)}, Enviado: {key}")
 
             nome_robo = robo.nome.lower().replace(" ", "_")
-            #script_path = f"C:\\Users\\ACP\\projetos\\robo_{nome_robo}"
-            script_path = f"D:\\workspace\\Python\\human\\robo_{nome_robo}"
+
+            def remove_accents(input_str):
+                nfkd_form = unicodedata.normalize('NFKD', input_str)
+                return u"".join([c for c in nfkd_form if not unicodedata.combining(c)])
+            
+            nome_robo = remove_accents(nome_robo)
+            script_path = f"C:\\Users\\ACP\\projetos\\robo_{nome_robo}"
+            #script_path = f"D:\\workspace\\Python\\human\\robo_{nome_robo}"
             robo_processo = subprocess.Popen(['powershell', '-Command', f"& cd '{script_path}'; ./.venv/Scripts/Activate.ps1; python robo_{nome_robo}.py"], shell=True, creationflags=subprocess.DETACHED_PROCESS, start_new_session=True)
             print("Robo em execução")
             sleep(2)
