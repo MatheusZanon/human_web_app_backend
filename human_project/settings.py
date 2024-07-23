@@ -22,7 +22,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-afojhqv$obqi4%$akoxw-tv-0$s3x!hreywopzp^01%vomz+=4'
+SECRET_KEY = get_ssm_parameter('/human/SIMPLE_JWT_SIGNING_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = get_ssm_parameter('/human/DEBUG', 'False') == 'True'
@@ -156,7 +156,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 }
 
-signing_key = get_ssm_parameter('/human/SIMPLE_JWT_SIGNING_KEY')
+signing_key = SECRET_KEY
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=4),
@@ -184,11 +184,15 @@ EMAIL_USER = get_ssm_parameter('/human/EMAIL_USER')
 EMAIL_PASSWORD = get_ssm_parameter('/human/EMAIL_PASSWORD')
 DEFAULT_FROM_EMAIL = EMAIL_USER
 
-"""
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': '/var/log/django/debug.log',
+        },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
@@ -196,10 +200,9 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['console'],
+            'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': True,
         },
     },
 }
-"""
