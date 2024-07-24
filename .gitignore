@@ -1,10 +1,9 @@
 /.venv
+/venv
 .env
 !.env.example
 
-**/__pycache__
-**/federation_config.json
+gunicorn.sock
+debug.log
 
-client_secrets.json
-secret_service.json
-token_drive_v3.pickle
+**/__pycache__
