@@ -135,13 +135,34 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 BACKEND_EC2_PUBLIC_IP = get_ssm_parameter('/human/BACKEND_EC2_PUBLIC_IP')
 FRONTEND_URL_AWS_DOMAIN = get_ssm_parameter('/human/FRONTEND_URL_AWS_DOMAIN')
 
-ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, FRONTEND_URL_AWS_DOMAIN, 'localhost', '127.0.0.1']
+ALLOWED_HOSTS = [BACKEND_EC2_PUBLIC_IP, FRONTEND_URL_AWS_DOMAIN]
+
 CORS_ALLOWED_ORIGINS = [
     f"https://{FRONTEND_URL_AWS_DOMAIN}",
-    'http://localhost:5173',  # para desenvolvimento local
 ]
 
 CORS_ALLOW_CREDENTIALS = True
+
+CORS_ALLOW_METHODS = [
+    'DELETE',
+    'GET',
+    'OPTIONS',
+    'PATCH',
+    'POST',
+    'PUT',
+]
+
+CORS_ALLOW_HEADERS = [
+    "accept",
+    "accept-encoding",
+    "authorization",
+    "content-type",
+    "dnt",
+    "origin",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+]  
 
 # Configurações de segurança
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
@@ -156,7 +177,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
 }
 
-signing_key = SECRET_KEY
+
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
     'REFRESH_TOKEN_LIFETIME': timedelta(hours=4),
@@ -165,7 +186,7 @@ SIMPLE_JWT = {
     'UPDATE_LAST_LOGIN': True,
 
     'ALGORITHM': 'HS256',
-    'SIGNING_KEY': signing_key,
+    'SIGNING_KEY': SECRET_KEY,
     'AUTH_HEADER_TYPES': ('Bearer',),
     'AUTH_COOKIE': 'access_token',  # Nome do cookie para os tokens
     'AUTH_COOKIE_DOMAIN': None,     # Domínio do cookie
