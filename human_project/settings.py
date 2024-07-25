@@ -52,6 +52,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'human_project.middleware.BlockDirectAccessMiddleware',
 ]
 
 ROOT_URLCONF = 'human_project.urls'
@@ -175,6 +176,9 @@ REST_FRAMEWORK = {
         'human_app.authentication.JWTAuthenticationFromCookie',
     ),
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    )
 }
 
 
