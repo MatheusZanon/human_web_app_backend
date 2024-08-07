@@ -67,6 +67,7 @@ class ClientesFinanceiroValores(models.Model):
     vale_refeicao = models.FloatField(blank=True, null=True)
     mensal_ponto_elet = models.FloatField(blank=True, null=True)
     saude_seguranca_trabalho = models.FloatField(blank=True, null=True)
+    seguro_estagio = models.FloatField(blank=True, null=True)
     percentual_human = models.FloatField(blank=True, null=True)
     economia_mensal = models.FloatField(blank=True, null=True)
     economia_liquida = models.FloatField(blank=True, null=True)
