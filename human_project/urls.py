@@ -19,6 +19,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_simplejwt.views import TokenRefreshView
 from human_app.views import *
+from IntegracaoESocial.urls import router as esocial_router
 
 
 router = DefaultRouter()
@@ -43,4 +44,10 @@ urlpatterns = [
     path('api/session/renew/', SessionRenewToken.as_view(), name='session_renew_token'),
     path('api/session/verify/', SessionVerifyToken.as_view(), name='session_verify_token'),
     path('api/session/logout/', SessionLogout.as_view(), name='session_logout'),
+]
+
+# Adicionar o urls.py dos modulos aqui para as integrações funcionarem
+# Integração com o eSocial
+urlpatterns += [
+    path('api/esocial/', include(esocial_router.urls))
 ]

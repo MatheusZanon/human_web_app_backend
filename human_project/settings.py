@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'django_filters',
     'human_app.apps.HumanAppConfig',
+    'IntegracaoESocial.apps.IntegracaoesocialConfig',
 ]
 
 MIDDLEWARE = [
