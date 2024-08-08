@@ -7,6 +7,11 @@ INTEGRATION_ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
     Caminho da raiz da integração. Usado para encontrar certificados, XSDs e WSDLs.
 """
 
+EVENT_ID_PREFIX = 'ID'
+"""
+    Prefixo dos IDs dos eventos. Usado para identificar eventos na integração.
+"""
+
 # URLs dos serviços web, organizadas por ambiente e operação
 WS_URL: Dict[Environment, Dict[Operation, str]] = {
     Environment.TESTS: {

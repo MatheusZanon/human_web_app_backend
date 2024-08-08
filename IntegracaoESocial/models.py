@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 
 class EventLog(models.Model):
-    event_id = models.CharField(max_length=20, unique=True)
+    event_id = models.CharField(max_length=36, unique=True)
     event_type = models.CharField(max_length=255)
     event_data = models.JSONField() # Armazena os dados do evento
     event_issuer = models.CharField(max_length=14) # CNPJ/CPF do emissor do evento (Empregador)

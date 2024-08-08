@@ -12,6 +12,9 @@ class ESocialWsdl(Enum):
 class ESocialTipoEvento(Enum):
     """
     Enum para os tipos de eventos do e-social suportados na Integração.
+
+    Cada tupla contém o nome do XSD e o nome do elemento raiz do evento.
+    Exemplo: ("evtInfoEmpregador", "evtInfoEmpregador")
     """
     EVT_INFO_EMPREGADOR = ("evtInfoEmpregador", "evtInfoEmpregador")
     EVT_ADMISSAO_PRELIMINAR = ("evtAdmissaoPreliminar", "evtAdmPrelim")
