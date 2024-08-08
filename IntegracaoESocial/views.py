@@ -46,11 +46,13 @@ class EmpregadorViewSet(viewsets.ViewSet):
             protocolo = request.query_params.get('protocolo')
             id_lote = request.query_params.get('id_lote')
 
-            resposta = self.esocial.consultar_lote_eventos(protocolo=protocolo, id_lote=id_lote)
+            resposta = self.esocial.consultar_lote(id_lote)
 
             # Processar a resposta
+            resposta_json = self.esocial.xml_to_dict(resposta)
+            print(resposta_json)
             # Nota: Adapte isso com base na estrutura real da resposta do eSocial
-            return Response(resposta, status=status.HTTP_200_OK)
+            return Response(resposta_json, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({

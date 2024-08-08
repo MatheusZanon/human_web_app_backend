@@ -79,6 +79,38 @@ class IntegracaoESocial:
             os.unlink(cert_file.name)
             os.unlink(key_file.name)
     
+    def xml_to_dict(element: etree._Element) -> Dict[str, Any]:
+        """Converte um elemento XML em um dicionário Python."""
+        
+        def parse_element(elem: etree._Element) -> Union[str, Dict[str, Any], List[Dict[str, Any]]]:
+            """Função auxiliar para processar cada elemento XML recursivamente."""
+            # Se o elemento não tem filhos, retorna o texto do elemento
+            if len(elem) == 0:
+                return elem.text.strip() if elem.text else ''
+            
+            # Dicionário para armazenar os dados do elemento atual
+            result = {}
+            
+            # Processa os atributos do elemento
+            if elem.attrib:
+                result.update({f'@{k}': v for k, v in elem.attrib.items()})
+            
+            # Processa os filhos do elemento
+            for child in elem:
+                child_data = parse_element(child)
+                # Se já existe um item com o mesmo nome, transforma em lista
+                if child.tag in result:
+                    if not isinstance(result[child.tag], list):
+                        result[child.tag] = [result[child.tag]]
+                    result[child.tag].append(child_data)
+                else:
+                    result[child.tag] = child_data
+            
+            return result
+
+        # Converte o elemento raiz para dicionário e retorna
+        return {element.tag: parse_element(element)}
+    
     def _get_wsdl_url(self, service_path: ESocialEnums.ESocialWsdl):
         if self.ambiente == ESocialEnums.ESocialAmbiente.PRODUCAO:
             return f"https://webservices.envio.esocial.gov.br/{service_path.value}"
@@ -276,15 +308,72 @@ class IntegracaoESocial:
 
                 # Enviar o lote
                 response = client.service.EnviarLoteEventos(BatchElement(loteEventos=lote_eventos))
+
+                response_json = self.decode_response(response)
+                return response_json
+        except Exception as e:
+            logging.error(f"Erro ao processar o lote: {str(e)}")
+            return {"erro": "Erro ao processar o lote", "detalhes": str(e)}
+    
+    def xml_to_dict(self, element: etree._Element) -> Dict[str, Any]:
+        """Converte um elemento XML e seus filhos em um dicionário, removendo namespaces das tags."""
+        def recursive_dict(el: etree._Element) -> Dict[str, Any]:
+            # Remove o namespace da tag
+            tag = el.tag.split('}', 1)[-1] if '}' in el.tag else el.tag
+            
+            # Se o elemento possui texto e não está vazio
+            if el.text and el.text.strip():
+                return {tag: el.text.strip()}
+            
+            # Cria um dicionário para os filhos do elemento
+            child_dict = {}
+            for child in el:
+                child_tag = child.tag.split('}', 1)[-1] if '}' in child.tag else child.tag
+                child_dict[child_tag] = recursive_dict(child)
+            
+            return {tag: child_dict}
+
+        return recursive_dict(element)
+
+    def decode_response(self, response: etree._Element) -> Dict[str, Any]:
+        """Converte uma resposta XML do webservice eSocial para um dicionário JSON, removendo namespaces e indicando sucesso ou falha."""
+        def get_status(el: etree._Element) -> Dict[str, Any]:
+            """Extrai o status da resposta XML."""
+            status_element = el.find(".//status")
+            if status_element is not None:
+                cd_resposta = status_element.findtext("cdResposta")
+                desc_resposta = status_element.findtext("descResposta")
+                return {"code": cd_resposta, "message": desc_resposta}
+            return {"code": None, "message": None}
+
+        # Converte o XML para dicionário sem namespaces
+        response_dict = self.xml_to_dict(response)
+        
+        # Extrai status da resposta
+        status = get_status(response, 'status')
+        
+        # Verifica se a resposta indica sucesso ou falha
+        if status['code'] and int(status['code']) != 200:
+            return {
+                "status": "failure",
+                "code": status['code'],
+                "message": status['message'],
+                "details": response_dict
+            }
+        else:
+            return {
+                "status": "success",
+                "code": status['code'],
+                "message": status['message'],
+                "data": response_dict
+            }
+
+    def consultar_lote(self, lote):
+        try:
+            with self._create_client(ESocialEnums.ESocialWsdl.CONSULTAR_LOTE_EVENTOS) as client:
+                # Consultar o lote
+                response = client.service.ConsultarLoteEventos(lote)
                 return response
         except Exception as e:
             logging.error(f"Erro ao processar o lote: {str(e)}")
             return {"erro": "Erro ao processar o lote", "detalhes": str(e)}
-
-    def consultar_lote(self, protocolo):
-        client = self._create_client(ESocialEnums.ESocialWsdl.CONSULTAR_LOTE_EVENTOS)
-        
-        # Consultar o lote
-        response = client.service.ConsultarLoteEventos(protocolo)
-        
-        return response
