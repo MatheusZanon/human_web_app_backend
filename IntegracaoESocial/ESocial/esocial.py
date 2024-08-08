@@ -6,13 +6,13 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from contextlib import contextmanager
 import tempfile
 import os
-from typing import Dict, Any
+from typing import Dict, Any, Union, List
 import signxml
 from signxml import XMLSigner
 from lxml import etree
 from .errors import ESocialConnectionError, ESocialError, ESocialValidationError
 from .enums import Operation, ESocialWsdl, ESocialTipoEvento, Environment, ESocialAmbiente
-from .constants import WS_URL
+from .constants import WS_URL, MAX_BATCH_SIZE, INTEGRATION_ROOT_PATH
 from .services import EventLogService
 import logging
 
@@ -22,11 +22,15 @@ class XMLSignerWithSHA1(XMLSigner):
         pass
 
 class IntegracaoESocial:
-    def __init__(self, cert_path, cert_password, batch_to_send, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO):
+    def __init__(self, cert_filename, cert_password, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO):
+        previous_folder = os.path.normpath(INTEGRATION_ROOT_PATH + os.sep + os.pardir)
+        cert_folder = os.path.join(previous_folder, 'certs')
+        cert_path = os.path.join(cert_folder, cert_filename)
         self.cert_path = cert_path
         self.cert_password = cert_password
         self.ambiente = ambiente
         self.cert = self._load_cert()
+        self.batch_to_send: List[etree._ElementTree] = []
         self.event_logging_service = EventLogService()
     
     def _load_cert(self):
@@ -203,7 +207,7 @@ class IntegracaoESocial:
         evt_key = event_type.value[1]
         
         # Obter o caminho do XSD
-        xsd_path = os.path.join(os.path.dirname(__file__), 'config', 'xsd', f'{evt_filename}.xsd')
+        xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f'{evt_filename}.xsd')
 
         evt_id_numeric = self.event_logging_service.get_next_event_id()
         evt_id = f"ID{evt_id_numeric}"
@@ -221,6 +225,15 @@ class IntegracaoESocial:
         print(xml_string)
         # return None
         return signed_xml
+    
+    def add_event_to_lote(self, event: etree._ElementTree):
+        if len(self.batch_to_send) < 50:
+            # O elemento com o atributo Id deve ser o primeiro no lote
+            event_tag = event.getroot().getchildren()[0]
+            event_id = event_tag.get('Id')
+            pass
+        else:
+            raise ESocialValidationError(f"O lote de eventos não pode ter mais de {MAX_BATCH_SIZE} eventos")
 
     def check_event_status(self, protocol):
         # Implemente a consulta de status do evento
@@ -304,7 +317,7 @@ class IntegracaoESocial:
 
                 # Validar o lote
                 logging.info(f"Lote XML gerado:\n{lote_eventos_str}")
-                xsd_path = os.path.join(os.path.dirname(__file__), 'config', 'xsd', f'{ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS.value[0]}.xsd')
+                xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f'{ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS.value[0]}.xsd')
                 self.validate_event_xml(lote_eventos, xsd_path)
 
                 client.wsdl.dump()

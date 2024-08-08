@@ -17,7 +17,7 @@ class EmpregadorViewSet(viewsets.ViewSet):
         # Nota: Você pode querer mover essa inicialização para um lugar mais apropriado,
         # como um middleware ou uma configuração global
         self.esocial = IntegracaoESocial(
-            cert_path="C:\\Users\\ACP\\projetos\\human_web_app\\human_web_app_backend\\IntegracaoESocial\\HUMAN_SOLUCOES_E_DESENVOLVIMENTOS_EM_RECURSOS_HUM_SENHA 123456.pfx",
+            cert_filename="HUMAN_SOLUCOES_E_DESENVOLVIMENTOS_EM_RECURSOS_HUM_SENHA 123456.pfx",
             cert_password='123456',
             ambiente=ESocialAmbiente.DESENVOLVIMENTO  # ou o ambiente desejado
         )
@@ -30,7 +30,7 @@ class EmpregadorViewSet(viewsets.ViewSet):
             transmissor_tpInsc = ide_empregador['tpInsc']
             transmissor_nrInsc = ide_empregador['nrInsc']
 
-            xml = self.esocial.create_event(request.data, ESocialTipoEvento.EVT_ADMISSAO_PRELIMINAR, 12345678912345, 12345678912345, 0)
+            xml = self.esocial.create_event(request.data, ESocialTipoEvento.EVT_INFO_EMPREGADOR, 12345678912345, 12345678912345, 0)
             response = self.esocial.enviar_lote(xml, transmissor_tpInsc, transmissor_nrInsc)
 
             return Response(response, status=status.HTTP_200_OK)
