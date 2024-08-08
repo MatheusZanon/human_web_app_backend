@@ -10,8 +10,9 @@ from typing import Dict, Any
 import signxml
 from signxml import XMLSigner
 from lxml import etree
-from . import errors as ESocialErrors
-from . import enums as ESocialEnums
+from .errors import ESocialConnectionError, ESocialError, ESocialValidationError
+from .enums import Operation, ESocialWsdl, ESocialTipoEvento, Environment, ESocialAmbiente
+from .constants import WS_URL
 from .services import EventLogService
 import logging
 
@@ -21,7 +22,7 @@ class XMLSignerWithSHA1(XMLSigner):
         pass
 
 class IntegracaoESocial:
-    def __init__(self, cert_path, cert_password, ambiente: ESocialEnums.ESocialAmbiente = ESocialEnums.ESocialAmbiente.PRODUCAO):
+    def __init__(self, cert_path, cert_password, batch_to_send, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO):
         self.cert_path = cert_path
         self.cert_password = cert_password
         self.ambiente = ambiente
@@ -35,9 +36,12 @@ class IntegracaoESocial:
             pfx_data, self.cert_password.encode(), None
         )
         return (certificate, private_key)
+    
+    def get_wsdl_url(env: Environment, operation: Operation) -> str:
+        return WS_URL[env][operation]
 
     @contextmanager
-    def _create_client(self, service_path: ESocialEnums.ESocialWsdl):
+    def _create_client(self, service_path: ESocialWsdl):
         session = requests.Session()
     
         # Desempacotar o certificado e a chave privada
@@ -111,8 +115,8 @@ class IntegracaoESocial:
         # Converte o elemento raiz para dicionário e retorna
         return {element.tag: parse_element(element)}
     
-    def _get_wsdl_url(self, service_path: ESocialEnums.ESocialWsdl):
-        if self.ambiente == ESocialEnums.ESocialAmbiente.PRODUCAO:
+    def _get_wsdl_url(self, service_path: ESocialWsdl):
+        if self.ambiente == ESocialAmbiente.PRODUCAO:
             return f"https://webservices.envio.esocial.gov.br/{service_path.value}"
         else:
             return f"https://webservices.producaorestrita.esocial.gov.br/{service_path.value}"
@@ -125,7 +129,7 @@ class IntegracaoESocial:
         except Exception as e:
             raise ValueError(f"Erro ao ler o namespace do XSD: {e}")
 
-    def generate_event_xml(self, event: ESocialEnums.ESocialTipoEvento, event_data: Dict[str, Any], event_id: str, xsd_path: str) -> etree.ElementTree:
+    def generate_event_xml(self, event: ESocialTipoEvento, event_data: Dict[str, Any], event_id: str, xsd_path: str) -> etree.ElementTree:
         evt_filename = event.value[0]
         evt_key = event.value[1]
 
@@ -194,7 +198,7 @@ class IntegracaoESocial:
 
         return signed
 
-    def send_event(self, event_data: Dict[str, Any], event_type: ESocialEnums.ESocialTipoEvento, issuer_cnpj_cpf: str = None, signer_cnpj_cpf: str = None, user_id: int = None):
+    def create_event(self, event_data: Dict[str, Any], event_type: ESocialTipoEvento, issuer_cnpj_cpf: str = None, signer_cnpj_cpf: str = None, user_id: int = None):
         evt_filename = event_type.value[0]
         evt_key = event_type.value[1]
         
@@ -224,9 +228,9 @@ class IntegracaoESocial:
 
     def enviar_lote(self, eventos, transmissor_tpInsc, transmissor_nrInsc):
         try:
-            with self._create_client(ESocialEnums.ESocialWsdl.ENVIAR_LOTE_EVENTOS) as client:
+            with self._create_client(ESocialWsdl.ENVIAR_LOTE_EVENTOS) as client:
                 # Criar cliente do web service
-                # client = self._create_client(ESocialEnums.ESocialWsdl.ENVIAR_LOTE_EVENTOS)
+                # client = self._create_client(ESocialWsdl.ENVIAR_LOTE_EVENTOS)
 
                 # Garantir que eventos seja uma lista
                 if not isinstance(eventos, list):
@@ -300,7 +304,7 @@ class IntegracaoESocial:
 
                 # Validar o lote
                 logging.info(f"Lote XML gerado:\n{lote_eventos_str}")
-                xsd_path = os.path.join(os.path.dirname(__file__), 'config', 'xsd', f'{ESocialEnums.ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS.value[0]}.xsd')
+                xsd_path = os.path.join(os.path.dirname(__file__), 'config', 'xsd', f'{ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS.value[0]}.xsd')
                 self.validate_event_xml(lote_eventos, xsd_path)
 
                 client.wsdl.dump()
@@ -370,7 +374,7 @@ class IntegracaoESocial:
 
     def consultar_lote(self, lote):
         try:
-            with self._create_client(ESocialEnums.ESocialWsdl.CONSULTAR_LOTE_EVENTOS) as client:
+            with self._create_client(ESocialWsdl.CONSULTAR_LOTE_EVENTOS) as client:
                 # Consultar o lote
                 response = client.service.ConsultarLoteEventos(lote)
                 return response

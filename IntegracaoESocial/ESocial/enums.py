@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from typing import Dict
 
 class ESocialAmbiente(Enum):
     PRODUCAO = 1
@@ -15,9 +16,6 @@ class ESocialTipoEvento(Enum):
     EVT_INFO_EMPREGADOR = ("evtInfoEmpregador", "evtInfoEmpregador")
     EVT_ADMISSAO_PRELIMINAR = ("evtAdmissaoPreliminar", "evtAdmPrelim")
     EVT_ENVIO_LOTE_EVENTOS = ("EnvioLoteEventos-v1_1_1", "envioLoteEventos")
-
-from enum import Enum
-from typing import Dict
 
 class Environment(Enum):
     PRODUCTION = 1
@@ -38,18 +36,3 @@ class Operation(Enum):
     # Solicitação de Download dos Eventos
     SOLICITAR_DOWNLOAD_EVENTOS_POR_ID = 'solicitar_download_eventos_por_id'
     SOLICITAR_DOWNLOAD_EVENTOS_POR_RECIBO = 'solicitar_download_eventos_por_recibo'
-
-# URLs dos serviços web, organizadas por ambiente e operação
-_WS_URL: Dict[Environment, Dict[Operation, str]] = {
-    Environment.TESTS: {
-        Operation.SEND_LOTE: 'https://webservices.producaorestrita.esocial.gov.br/servicos/empregador/enviarloteeventos/WsEnviarLoteEventos.svc?wsdl',
-        Operation.RETRIEVE_LOTE_RESULT: 'https://webservices.producaorestrita.esocial.gov.br/servicos/empregador/consultarloteeventos/WsConsultarLoteEventos.svc?wsdl',
-    },
-    Environment.PRODUCTION: {
-        Operation.SEND_LOTE: 'https://webservices.envio.esocial.gov.br/servicos/empregador/enviarloteeventos/WsEnviarLoteEventos.svc?wsdl',
-        Operation.RETRIEVE_LOTE_RESULT: 'https://webservices.consulta.esocial.gov.br/servicos/empregador/consultarloteeventos/WsConsultarLoteEventos.svc?wsdl',
-    },
-}
-
-def get_wsdl_url(env: Environment, operation: Operation) -> str:
-    return _WS_URL[env][operation]

@@ -30,7 +30,7 @@ class EmpregadorViewSet(viewsets.ViewSet):
             transmissor_tpInsc = ide_empregador['tpInsc']
             transmissor_nrInsc = ide_empregador['nrInsc']
 
-            xml = self.esocial.send_event(request.data, ESocialTipoEvento.EVT_ADMISSAO_PRELIMINAR, 12345678912345, 12345678912345, 0)
+            xml = self.esocial.create_event(request.data, ESocialTipoEvento.EVT_ADMISSAO_PRELIMINAR, 12345678912345, 12345678912345, 0)
             response = self.esocial.enviar_lote(xml, transmissor_tpInsc, transmissor_nrInsc)
 
             return Response(response, status=status.HTTP_200_OK)
