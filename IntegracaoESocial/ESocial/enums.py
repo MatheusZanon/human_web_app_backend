@@ -16,15 +16,11 @@ class ESocialTipoEvento(Enum):
     Cada tupla contém o nome do XSD e o nome do elemento raiz do evento.
     Exemplo: ("evtInfoEmpregador", "evtInfoEmpregador")
     """
-    EVT_INFO_EMPREGADOR = ("evtInfoEmpregador", "evtInfoEmpregador")
-    EVT_ADMISSAO_PRELIMINAR = ("evtAdmissaoPreliminar", "evtAdmPrelim")
-    EVT_ENVIO_LOTE_EVENTOS = ("EnvioLoteEventos-v1_1_1", "envioLoteEventos")
+    EVT_INFO_EMPREGADOR = ("evtInfoEmpregador", "evtInfoEmpregador", "")
+    EVT_ADMISSAO_PRELIMINAR = ("evtAdmissaoPreliminar", "evtAdmPrelim", "")
+    EVT_ENVIO_LOTE_EVENTOS = ("envioLoteEventos", "EnvioLoteEventos-v1_1_1", "RetornoEnvioLoteEventos-v1_1_0")
 
-class Environment(Enum):
-    PRODUCTION = 1
-    TESTS = 2
-
-class Operation(Enum):
+class ESocialOperacao(Enum):
     # Envio de Lote de Eventos
     SEND_LOTE = 'send_lote'
     

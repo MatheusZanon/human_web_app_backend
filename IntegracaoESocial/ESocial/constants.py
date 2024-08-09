@@ -1,4 +1,4 @@
-from .enums import Operation, Environment
+from .enums import ESocialOperacao, ESocialAmbiente
 from typing import Dict
 import os
 
@@ -13,14 +13,14 @@ EVENT_ID_PREFIX = 'ID'
 """
 
 # URLs dos serviços web, organizadas por ambiente e operação
-WS_URL: Dict[Environment, Dict[Operation, str]] = {
-    Environment.TESTS: {
-        Operation.SEND_LOTE: 'https://webservices.producaorestrita.esocial.gov.br/servicos/empregador/enviarloteeventos/WsEnviarLoteEventos.svc?wsdl',
-        Operation.RETRIEVE_LOTE_RESULT: 'https://webservices.producaorestrita.esocial.gov.br/servicos/empregador/consultarloteeventos/WsConsultarLoteEventos.svc?wsdl',
+WS_URL: Dict[ESocialAmbiente, Dict[ESocialOperacao, str]] = {
+    ESocialAmbiente.DESENVOLVIMENTO: {
+        ESocialOperacao.SEND_LOTE: 'https://webservices.producaorestrita.esocial.gov.br/servicos/empregador/enviarloteeventos/WsEnviarLoteEventos.svc?wsdl',
+        ESocialOperacao.RETRIEVE_LOTE_RESULT: 'https://webservices.producaorestrita.esocial.gov.br/servicos/empregador/consultarloteeventos/WsConsultarLoteEventos.svc?wsdl',
     },
-    Environment.PRODUCTION: {
-        Operation.SEND_LOTE: 'https://webservices.envio.esocial.gov.br/servicos/empregador/enviarloteeventos/WsEnviarLoteEventos.svc?wsdl',
-        Operation.RETRIEVE_LOTE_RESULT: 'https://webservices.consulta.esocial.gov.br/servicos/empregador/consultarloteeventos/WsConsultarLoteEventos.svc?wsdl',
+    ESocialAmbiente.PRODUCAO: {
+        ESocialOperacao.SEND_LOTE: 'https://webservices.envio.esocial.gov.br/servicos/empregador/enviarloteeventos/WsEnviarLoteEventos.svc?wsdl',
+        ESocialOperacao.RETRIEVE_LOTE_RESULT: 'https://webservices.consulta.esocial.gov.br/servicos/empregador/consultarloteeventos/WsConsultarLoteEventos.svc?wsdl',
     },
 }
 """

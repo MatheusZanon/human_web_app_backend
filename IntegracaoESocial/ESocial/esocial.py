@@ -11,10 +11,11 @@ import signxml
 from signxml import XMLSigner
 from lxml import etree
 from datetime import datetime, UTC
-from .errors import ESocialConnectionError, ESocialError, ESocialValidationError
-from .enums import Operation, ESocialWsdl, ESocialTipoEvento, Environment, ESocialAmbiente
+from .errors import ESocialError, ESocialValidationError
+from .enums import ESocialWsdl, ESocialTipoEvento, ESocialAmbiente, ESocialOperacao
 from .constants import WS_URL, MAX_BATCH_SIZE, INTEGRATION_ROOT_PATH, EVENT_ID_PREFIX
 from .services import EventLogService
+from .xml import XMLHelper, XMLValidator, get_namespace_from_xsd, xsd_from_file
 import logging
 
 # Override signxml.XMLSigner.check_deprecated_methods() para ignorar os erros e poder utilizar o SHA1, remover quando o e-social aceitar assinaturas mais seguras
@@ -23,15 +24,17 @@ class XMLSignerWithSHA1(XMLSigner):
         pass
 
 class IntegracaoESocial:
-    def __init__(self, cert_filename, cert_password, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO):
+    def __init__(self, cert_filename, cert_password, transmissorTpInsc, transmissorCpfCnpj, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO):
         previous_folder = os.path.normpath(INTEGRATION_ROOT_PATH + os.sep + os.pardir)
         cert_folder = os.path.join(previous_folder, 'certs')
         cert_path = os.path.join(cert_folder, cert_filename)
         self.cert_path = cert_path
         self.cert_password = cert_password
+        self.transmissorTpInsc = transmissorTpInsc
+        self.transmissorCpfCnpj = transmissorCpfCnpj
         self.ambiente = ambiente
         self.cert = self._load_cert()
-        self.batch_to_send: List[etree._ElementTree] = []
+        self.batch_to_send: List[etree._Element] = []
         self.event_logging_service = EventLogService()
     
     def _load_cert(self):
@@ -42,11 +45,11 @@ class IntegracaoESocial:
         )
         return (certificate, private_key)
     
-    def get_wsdl_url(env: Environment, operation: Operation) -> str:
-        return WS_URL[env][operation]
+    def get_wsdl_url(self, operation: ESocialOperacao) -> str:
+        return WS_URL[self.ambiente][operation]
 
     @contextmanager
-    def _create_client(self, service_path: ESocialWsdl):
+    def _create_client(self, wsdl_url: str):
         session = requests.Session()
     
         # Desempacotar o certificado e a chave privada
@@ -79,8 +82,7 @@ class IntegracaoESocial:
 
             # Criar o cliente SOAP
             transport = Transport(session=session)
-            wsdl = self._get_wsdl_url(service_path)
-            client = Client(wsdl, transport=transport)
+            client = Client(wsdl_url, transport=transport)
             
             yield client
         finally:
@@ -120,7 +122,7 @@ class IntegracaoESocial:
         # Converte o elemento raiz para dicionário e retorna
         return {element.tag: parse_element(element)}
     
-    def generate_event_id(self, cnpj_cpf: Union[str, int]) -> str:
+    def generate_event_id(self, cnpj_cpf: Union[str, int], ) -> str:
         """
         Gera um ID de evento baseado no CNPJ/CPF do emissor e timestamp atual.
 
@@ -149,7 +151,7 @@ class IntegracaoESocial:
         current_time = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
 
         # Gerar o número do ID com base no CNPJ/CPF e timestamp
-        id_number = f"{sanitized_cnpj_cpf}{current_time}"
+        id_number = f"{sanitized_cnpj_cpf}{current_time}{len(self.batch_to_send) + 1}"
         
         # Completar com zeros caso o id_number não tenha 34 caracteres
         id_number = id_number.ljust(34, '0')
@@ -174,8 +176,8 @@ class IntegracaoESocial:
             raise ValueError(f"Erro ao ler o namespace do XSD: {e}")
 
     def generate_event_xml(self, event: ESocialTipoEvento, event_data: Dict[str, Any], event_id: str, xsd_path: str) -> etree.ElementTree:
-        evt_filename = event.value[0]
-        evt_key = event.value[1]
+        evt_key = event.value[0]
+        evt_filename = event.value[1]
 
         # Obter o namespace do XSD
         ns = self.get_namespace_from_xsd(xsd_path)
@@ -189,7 +191,7 @@ class IntegracaoESocial:
         root = etree.Element(f"{{{ns}}}eSocial", nsmap=nsmap)
 
         # Criar o elemento do evento
-        evento = etree.SubElement(root, f"{{{ns}}}{evt_key}", Id=event_id, versao="2.0")
+        evento = etree.SubElement(root, f"{{{ns}}}{evt_key}", Id=event_id)
 
         # Função recursiva para adicionar elementos
         def add_elements(parent: etree.Element, data: Dict[str, Any]) -> None:
@@ -220,7 +222,14 @@ class IntegracaoESocial:
             print(log)
             raise ValueError(f"XML inválido: {log.last_error}")
 
-    def sign_xml(self, xml, evt_id):
+    def sign(self, xml: etree._Element) -> etree._Element:
+        # Pegar o id do evento
+        evento_id = None
+        for child in xml.iterchildren():
+            evento_id = child.get('Id')
+            if evento_id:
+                break
+
         # Converter o certificado para o formato PEM
         cert_pem = self.cert[0].public_bytes(encoding=serialization.Encoding.PEM)
         
@@ -238,13 +247,13 @@ class IntegracaoESocial:
             c14n_algorithm=signxml.algorithms.CanonicalizationMethod.CANONICAL_XML_1_0,
         )
 
-        signed = signer.sign(xml, key=key_pem, cert=cert_pem, reference_uri=evt_id)
+        signed = signer.sign(xml, key=key_pem, cert=cert_pem, reference_uri=evento_id)
 
         return signed
 
     def create_event(self, event_data: Dict[str, Any], event_type: ESocialTipoEvento, issuer_cnpj_cpf: str = None, signer_cnpj_cpf: str = None, user_id: int = None):
-        evt_filename = event_type.value[0]
-        evt_key = event_type.value[1]
+        evt_key = event_type.value[0]
+        evt_filename = event_type.value[1]
         
         # Obter o caminho do XSD
         xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f'{evt_filename}.xsd')
@@ -259,15 +268,64 @@ class IntegracaoESocial:
         
         # Converter o XML assinado para string
         xml_string = etree.tostring(signed_xml, pretty_print=True, xml_declaration=True, encoding='UTF-8').decode()
-        self.event_logging_service.log_event(event_id=evt_id, event_type=evt_key, event_data=event_data, event_issuer=issuer_cnpj_cpf, event_signer=signer_cnpj_cpf, user_id=user_id)
+        # self.event_logging_service.log_event(event_id=evt_id, event_type=evt_key, event_data=event_data, event_issuer=issuer_cnpj_cpf, event_signer=signer_cnpj_cpf, user_id=user_id)
 
         print(xml_string)
         # return None
         return signed_xml
     
-    def add_event_to_lote(self, event: etree._ElementTree):
+    def create_s1000_envelope(self, event_data: Dict[str, Any], issuer_cnpj_cpf: str = None, user_id: int = None) -> etree._Element:
+        nsmap = get_namespace_from_xsd(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
+
+        s1000_xml = XMLHelper("eSocial", nsmap)
+
+        evt_id = self.generate_event_id(issuer_cnpj_cpf)
+
+        s1000_xml.add_element(None, "evtInfoEmpregador", Id=evt_id)
+
+        s1000_xml.add_element("evtInfoEmpregador", "ideEvento")
+        s1000_xml.add_element("evtInfoEmpregador/ideEvento", "tpAmb", text=str(self.ambiente.value))
+        s1000_xml.add_element("evtInfoEmpregador/ideEvento", "procEmi", text="1")
+        s1000_xml.add_element("evtInfoEmpregador/ideEvento", "verProc", text="1.0")
+
+        s1000_xml.add_element("evtInfoEmpregador", "ideEmpregador")
+        if len(str(issuer_cnpj_cpf)) == 14: # Se for cnpj o tipo de inscrição deve ser 1
+            s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "tpInsc", text="1")
+        elif len(str(issuer_cnpj_cpf)) == 11: # Se for cpf o tipo de inscrição deve ser 2
+            s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "tpInsc", text="2")
+        else:
+            raise ESocialValidationError(f"O CNPJ ou CPF do emissor deve ter 14 ou 11 caracteres respectivamente.")
+        
+        s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "nrInsc", text=str(issuer_cnpj_cpf))
+
+        s1000_xml.add_element("evtInfoEmpregador", "infoEmpregador")
+
+        # Verifica e adiciona a tag correta dentro de infoEmpregador
+        operations = {'inclusao', 'alteracao', 'exclusao'}
+        present_operations = [op for op in operations if op in event_data['infoEmpregador']]
+
+        if len(present_operations) != 1:
+            print(present_operations)
+            raise ESocialValidationError("Deve ser especificado exatamente um tipo de operação: 'inclusao', 'alteracao' ou 'exclusao'.")
+        
+        if present_operations[0] == 'inclusao':
+            s1000_xml.add_element("evtInfoEmpregador/infoEmpregador", "inclusao")
+
+            s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao", "idePeriodo")
+            s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/idePeriodo", "iniValid", text=event_data['infoEmpregador']['inclusao']['idePeriodo']['iniValid'])
+            s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/idePeriodo", "fimValid", text=event_data['infoEmpregador']['inclusao']['idePeriodo']['fimValid'])
+        elif present_operations[0] == 'alteracao':
+            s1000_xml.add_element("evtInfoEmpregador/infoEmpregador", "alteracao")
+        elif present_operations[0] == 'exclusao':
+            s1000_xml.add_element("evtInfoEmpregador/infoEmpregador", "exclusao")
+        else:
+            raise ESocialValidationError("O tipo de operação S-1000 deve conter exatamente um tipo de operação: 'inclusao', 'alteracao' ou 'exclusao'.")
+        
+        return s1000_xml.root
+    
+    def add_event_to_lote(self, event: etree._Element):
         if len(self.batch_to_send) < 50:
-            pass
+            self.batch_to_send.append(event)
         else:
             raise ESocialValidationError(f"O lote de eventos não pode ter mais de {MAX_BATCH_SIZE} eventos")
 
@@ -275,27 +333,18 @@ class IntegracaoESocial:
         # Implemente a consulta de status do evento
         pass
 
-    def enviar_lote(self, eventos, transmissor_tpInsc, transmissor_nrInsc):
+    def _create_send_envelope(self, group_id: str):
         try:
-            with self._create_client(ESocialWsdl.ENVIAR_LOTE_EVENTOS) as client:
-                # Criar cliente do web service
-                # client = self._create_client(ESocialWsdl.ENVIAR_LOTE_EVENTOS)
-
-                # Garantir que eventos seja uma lista
-                if not isinstance(eventos, list):
-                    eventos = [eventos]
-
-                # Criar o elemento raiz do lote com prefixo de namespace
-                nsmap = {"esocial": "http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1"}
-                lote_eventos = etree.Element("{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}eSocial", nsmap=nsmap)
-                envio_lote = etree.SubElement(lote_eventos, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}envioLoteEventos", grupo="1")
-
+            
                 # Extrair informações do empregador do primeiro evento válido
                 ide_empregador = None
-                for evento in eventos:
-                    primeiro_evento = etree.fromstring(evento) if isinstance(evento, str) else evento
-                    ns = {"ns": "http://www.esocial.gov.br/schema/evt/evtAdmissaoPreliminar/v02_00_00"}
-                    ide_empregador = primeiro_evento.find(".//ns:ideEmpregador", namespaces=ns)
+                for evento in self.batch_to_send:
+                    for child in evento.iterchildren():
+                        if child.tag == "ideEmpregador":
+                            ide_empregador = child
+
+                    ns = {"ns": "*"}
+                    ide_empregador = evento.find(".//ns:ideEmpregador", namespaces=ns)
                     if ide_empregador is not None:
                         break
 
@@ -308,66 +357,71 @@ class IntegracaoESocial:
                 if tpInsc is None or nrInsc is None:
                     raise ESocialValidationError("Elementos tpInsc ou nrInsc não encontrados no elemento ideEmpregador")
 
-                # Adicionar ideEmpregador
-                lote_ide_empregador = etree.SubElement(envio_lote, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}ideEmpregador")
-                etree.SubElement(lote_ide_empregador, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}tpInsc").text = tpInsc.text
-                etree.SubElement(lote_ide_empregador, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}nrInsc").text = nrInsc.text
+                # Criar o elemento raiz do lote com prefixo de namespace
+                nsmap = get_namespace_from_xsd(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
+                lote_eventos_xml = XMLHelper("eSocial", nsmap)
+                lote_eventos_xml.add_element(None, "envioLoteEventos", grupo=group_id)
 
-                # Adicionar ideTransmissor
-                ide_transmissor = etree.SubElement(envio_lote, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}ideTransmissor")
-                etree.SubElement(ide_transmissor, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}tpInsc").text = transmissor_tpInsc
-                etree.SubElement(ide_transmissor, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}nrInsc").text = transmissor_nrInsc
+                lote_eventos_xml.add_element("envioLoteEventos", "ideEmpregador")
+                lote_eventos_xml.add_element("envioLoteEventos/ideEmpregador", "tpInsc", text=tpInsc.text)
+                lote_eventos_xml.add_element("envioLoteEventos/ideEmpregador", "nrInsc", text=nrInsc.text)
 
-                # Adicionar eventos
-                eventos_element = etree.SubElement(envio_lote, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}eventos")
+                lote_eventos_xml.add_element("envioLoteEventos", "ideTransmissor")
+                lote_eventos_xml.add_element("envioLoteEventos/ideTransmissor", "tpInsc", text=self.transmissorTpInsc)
+                lote_eventos_xml.add_element("envioLoteEventos/ideTransmissor", "nrInsc", text=self.transmissorCpfCnpj)
 
-                for evento in eventos:
-                    if isinstance(evento, str):
-                        try:
-                            evento_xml = etree.fromstring(evento)
-                        except etree.XMLSyntaxError as e:
-                            logging.error(f"XML inválido: {str(e)}")
-                            continue
-                    elif isinstance(evento, etree._Element):
-                        evento_xml = evento
-                    else:
-                        logging.warning(f"Tipo de evento não suportado: {type(evento)}")
-                        continue
+                lote_eventos_xml.add_element("envioLoteEventos", "eventos")
+                
+                for evento in self.batch_to_send:
+                    evento_id = None
+                    for child in evento.iterchildren():
+                        evento_id = child.get('Id')
+                        if evento_id:
+                            break
+
+                    if not evento_id:
+                        raise ESocialValidationError("Atributo 'Id' não encontrado em nenhum elemento do evento")
                     
-                    # Encontrar o Id do evento interno
-                evento_id = evento_xml.find(".//*[@Id]")
-                if evento_id is not None:
-                    id_value = evento_id.get("Id")
-                    
-                    # Criar o elemento evento com o atributo Id
-                    evento_element = etree.SubElement(eventos_element, "{http://www.esocial.gov.br/schema/lote/eventos/envio/v1_1_1}evento", Id=id_value)
-                    
-                    # Adicionar o conteúdo do evento
-                    evento_element.append(evento_xml)
-                else:
-                    logging.warning("Evento sem atributo Id encontrado")
+                    event_root = lote_eventos_xml.add_element("envioLoteEventos/eventos", "evento", Id=evento_id)
+                    event_root.append(evento)
+                return lote_eventos_xml.root
+        except Exception as e:
+            logging.error(f"Erro ao processar o lote: {str(e)}")
+        
+    def send(self, wsdl: str, group_id: str = 1, clear_batch: bool = True) -> Dict[str, Any]:
+        try:
+            with self._create_client(wsdl) as client:
+                lote_eventos = self._create_send_envelope(group_id)
 
-                # Converter o lote para string
-                lote_eventos_str = etree.tostring(lote_eventos, encoding='unicode', pretty_print=True)
-                print(lote_eventos_str)
+                # batch xml
+                # print(etree.tostring(lote_eventos, pretty_print=True).decode('utf-8'))
 
-                # Validar o lote
-                logging.info(f"Lote XML gerado:\n{lote_eventos_str}")
-                xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f'{ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS.value[0]}.xsd')
-                self.validate_event_xml(lote_eventos, xsd_path)
+                xsd_batch = xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
+                XMLValidator(lote_eventos, xsd_batch).validate()
 
-                client.wsdl.dump()
+                # client.wsdl.dump()
+
                 BatchElement = client.get_element('ns1:EnviarLoteEventos')
 
                 # Enviar o lote
                 response = client.service.EnviarLoteEventos(BatchElement(loteEventos=lote_eventos))
+                
+                # response xml
+                # print(etree.tostring(response, pretty_print=True).decode('utf-8'))
+
+                xsd_response = xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS, 'retorno')
+                XMLValidator(response, xsd_response).validate()
 
                 response_json = self.decode_response(response)
+
+                if clear_batch:
+                    self.batch_to_send.clear()
+
                 return response_json
+        except ESocialError as ee:
+            print(f"Erro E-social: {ee.message}")
         except Exception as e:
-            logging.error(f"Erro ao processar o lote: {str(e)}")
-            return {"erro": "Erro ao processar o lote", "detalhes": str(e)}
-    
+            print(f"Erro ao enviar lote: {str(e)}")
     def xml_to_dict(self, element: etree._Element) -> Dict[str, Any]:
         """Converte um elemento XML e seus filhos em um dicionário, removendo namespaces das tags."""
         def recursive_dict(el: etree._Element) -> Dict[str, Any]:
@@ -382,7 +436,15 @@ class IntegracaoESocial:
             child_dict = {}
             for child in el:
                 child_tag = child.tag.split('}', 1)[-1] if '}' in child.tag else child.tag
-                child_dict[child_tag] = recursive_dict(child)
+                child_value = recursive_dict(child)
+
+                if child_tag in child_dict:
+                    # Se a tag já existe no dicionário, converte para lista
+                    if not isinstance(child_dict[child_tag], list):
+                        child_dict[child_tag] = [child_dict[child_tag]]
+                    child_dict[child_tag].append(child_value[child_tag])
+                else:
+                    child_dict[child_tag] = child_value[child_tag]
             
             return {tag: child_dict}
 
@@ -390,14 +452,24 @@ class IntegracaoESocial:
 
     def decode_response(self, response: etree._Element) -> Dict[str, Any]:
         """Converte uma resposta XML do webservice eSocial para um dicionário JSON, removendo namespaces e indicando sucesso ou falha."""
-        def get_status(el: etree._Element) -> Dict[str, Any]:
-            """Extrai o status da resposta XML."""
-            status_element = el.find(".//status")
+        def get_status(el: etree._Element, tagname: str) -> Dict[str, Any]:
+            """Extrai o status da resposta XML, ignorando namespaces."""
+            # Removendo namespace da tag que estamos procurando
+            status_element = el.find(f".//{{*}}{tagname}")
+            cd_resposta = None
+            desc_resposta = None
+
             if status_element is not None:
-                cd_resposta = status_element.findtext("cdResposta")
-                desc_resposta = status_element.findtext("descResposta")
-                return {"code": cd_resposta, "message": desc_resposta}
-            return {"code": None, "message": None}
+                # Busca os elementos cdResposta e descResposta sem utilizar //, pois já estamos no contexto de status_element
+                cd_resposta_element = status_element.find("{*}cdResposta")
+                if cd_resposta_element is not None:
+                    cd_resposta = cd_resposta_element.text
+                
+                desc_resposta_element = status_element.find("{*}descResposta")
+                if desc_resposta_element is not None:
+                    desc_resposta = desc_resposta_element.text
+
+            return {"code": cd_resposta, "message": desc_resposta}
 
         # Converte o XML para dicionário sem namespaces
         response_dict = self.xml_to_dict(response)
@@ -406,7 +478,7 @@ class IntegracaoESocial:
         status = get_status(response, 'status')
         
         # Verifica se a resposta indica sucesso ou falha
-        if status['code'] and int(status['code']) != 200:
+        if status['code'] is None or int(status['code']) != 201:
             return {
                 "status": "failure",
                 "code": status['code'],

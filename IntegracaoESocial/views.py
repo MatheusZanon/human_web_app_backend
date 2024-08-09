@@ -4,9 +4,9 @@ from rest_framework import status, viewsets
 from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from IntegracaoESocial.ESocial.esocial import IntegracaoESocial
-from IntegracaoESocial.ESocial.enums import ESocialAmbiente, ESocialTipoEvento, ESocialWsdl
+from IntegracaoESocial.ESocial.enums import ESocialAmbiente, ESocialTipoEvento, ESocialOperacao
 import os
-from IntegracaoESocial.ESocial.xml import XMLHelper
+from IntegracaoESocial.ESocial.xml import XMLValidator, xsd_from_file
 from lxml import etree
 # Create your views here.
 
@@ -20,19 +20,26 @@ class EmpregadorViewSet(viewsets.ViewSet):
         self.esocial = IntegracaoESocial(
             cert_filename="HUMAN_SOLUCOES_E_DESENVOLVIMENTOS_EM_RECURSOS_HUM_SENHA 123456.pfx",
             cert_password='123456',
+            transmissorTpInsc='1',
+            transmissorCpfCnpj='12345678912345',
             ambiente=ESocialAmbiente.DESENVOLVIMENTO  # ou o ambiente desejado
         )
 
     @action(detail=False, methods=['post'])
     def consultar_empregador(self, request):
         try:
-            # Extrair ideEmpregador
-            ide_empregador = request.data.pop('ideTransmissor')
-            transmissor_tpInsc = ide_empregador['tpInsc']
-            transmissor_nrInsc = ide_empregador['nrInsc']
+            wsdl = self.esocial.get_wsdl_url(ESocialOperacao.SEND_LOTE)
 
-            xml = self.esocial.create_event(request.data, ESocialTipoEvento.EVT_INFO_EMPREGADOR, 12345678912345, 12345678912345, 0)
-            response = self.esocial.enviar_lote(xml, transmissor_tpInsc, transmissor_nrInsc)
+            xml = self.esocial.create_s1000_envelope(request.data, 12345678912345, 0)
+            xml = self.esocial.sign(xml)
+            xsd = xsd_from_file(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
+            XMLValidator(xml, xsd).validate()
+            self.esocial.add_event_to_lote(xml)
+            
+            response = self.esocial.send(wsdl)
+
+            if response['status'] == 'failure':
+                return Response(response, status=status.HTTP_400_BAD_REQUEST)
 
             return Response(response, status=status.HTTP_200_OK)
         except Exception as e:
