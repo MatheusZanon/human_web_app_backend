@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from IntegracaoESocial.ESocial.esocial import IntegracaoESocial
 from IntegracaoESocial.ESocial.enums import ESocialAmbiente, ESocialTipoEvento, ESocialOperacao
 import os
-from IntegracaoESocial.ESocial.xml import XMLValidator, xsd_from_file
+from IntegracaoESocial.ESocial.xml import XMLValidator, XSDHelper
 from lxml import etree
 # Create your views here.
 
@@ -32,7 +32,7 @@ class EmpregadorViewSet(viewsets.ViewSet):
 
             xml = self.esocial.create_s1000_envelope(request.data, 12345678912345, 0)
             xml = self.esocial.sign(xml)
-            xsd = xsd_from_file(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
+            xsd = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
             XMLValidator(xml, xsd).validate()
             self.esocial.add_event_to_lote(xml)
             

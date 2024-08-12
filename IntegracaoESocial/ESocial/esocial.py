@@ -15,7 +15,7 @@ from .errors import ESocialError, ESocialValidationError
 from .enums import ESocialWsdl, ESocialTipoEvento, ESocialAmbiente, ESocialOperacao
 from .constants import WS_URL, MAX_BATCH_SIZE, INTEGRATION_ROOT_PATH, EVENT_ID_PREFIX
 from .services import EventLogService
-from .xml import XMLHelper, XMLValidator, get_namespace_from_xsd, xsd_from_file
+from .xml import XMLHelper, XMLValidator, XSDHelper
 import logging
 
 # Override signxml.XMLSigner.check_deprecated_methods() para ignorar os erros e poder utilizar o SHA1, remover quando o e-social aceitar assinaturas mais seguras
@@ -275,7 +275,7 @@ class IntegracaoESocial:
         return signed_xml
     
     def create_s1000_envelope(self, event_data: Dict[str, Any], issuer_cnpj_cpf: str = None, user_id: int = None) -> etree._Element:
-        nsmap = get_namespace_from_xsd(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
+        nsmap = XSDHelper().get_namespace_from_xsd(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
 
         s1000_xml = XMLHelper("eSocial", nsmap)
 
@@ -358,7 +358,7 @@ class IntegracaoESocial:
                     raise ESocialValidationError("Elementos tpInsc ou nrInsc não encontrados no elemento ideEmpregador")
 
                 # Criar o elemento raiz do lote com prefixo de namespace
-                nsmap = get_namespace_from_xsd(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
+                nsmap = XSDHelper().get_namespace_from_xsd(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
                 lote_eventos_xml = XMLHelper("eSocial", nsmap)
                 lote_eventos_xml.add_element(None, "envioLoteEventos", grupo=group_id)
 
@@ -396,7 +396,7 @@ class IntegracaoESocial:
                 # batch xml
                 # print(etree.tostring(lote_eventos, pretty_print=True).decode('utf-8'))
 
-                xsd_batch = xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
+                xsd_batch = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
                 XMLValidator(lote_eventos, xsd_batch).validate()
 
                 # client.wsdl.dump()
@@ -409,7 +409,7 @@ class IntegracaoESocial:
                 # response xml
                 # print(etree.tostring(response, pretty_print=True).decode('utf-8'))
 
-                xsd_response = xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS, 'retorno')
+                xsd_response = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS, 'retorno')
                 XMLValidator(response, xsd_response).validate()
 
                 response_json = self.decode_response(response)

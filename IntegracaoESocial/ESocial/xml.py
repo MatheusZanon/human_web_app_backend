@@ -1,9 +1,8 @@
 from lxml import etree
-from typing import Optional, Dict, Any
+from typing import Optional, Literal, Dict, Any
 import os
 from datetime import datetime, UTC
-from typing import Literal
-from .errors import ESocialValidationError
+from .errors import ESocialValidationError, ESocialError
 from .enums import ESocialTipoEvento
 from .constants import INTEGRATION_ROOT_PATH
 
@@ -190,8 +189,7 @@ class XMLHelper:
         previous_folder = os.path.normpath(INTEGRATION_ROOT_PATH + os.sep + os.pardir)
         generated_folder = os.path.normpath(previous_folder + os.sep + "generated")
 
-        if not os.path.exists(generated_folder):
-            os.makedirs(generated_folder)
+        os.makedirs(generated_folder, exist_ok=True)
 
         if not filename:
             # Cria um nome com o primeiro id encontrado ou gera com base na timestamp UTC
@@ -214,48 +212,58 @@ class XMLHelper:
         with open(file_path, 'w', encoding='UTF-8') as file:
             file.write(self.to_string())
 
-
-def xsd_from_file(eventType: ESocialTipoEvento, type: Literal['envio', 'retorno'] = 'envio') -> etree.XMLSchema:
+class XSDHelper:
     """
-        Retorna uma instância de XSD a partir de um arquivo.
-
-        Args:
-            eventType (ESocialTipoEvento): O nome do arquivo.
-            type (Literal['envio', 'retorno'], optional): O tipo de arquivo. O padrão é 'envio'.
-
-        Returns:
-            lxml.etree.XMLSchema: A instância de XSD.
+        Classe para auxiliar na manipulação e extração de informações de um arquivo XSD.
     """
 
-    if type == 'envio':
-        xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f"{eventType.value[1]}.xsd")
-    else:
-        xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f"{eventType.value[2]}.xsd")
-    
-    with open(xsd_path, 'r', encoding='UTF-8') as file:
-        xmlschema = etree.parse(file)
-    
-    return etree.XMLSchema(xmlschema)
-
-def get_namespace_from_xsd(eventType: ESocialTipoEvento, type: Literal['envio', 'retorno'] = 'envio') -> str:
+    @staticmethod
+    def xsd_from_file(eventType: ESocialTipoEvento, type: Literal['envio', 'retorno'] = 'envio') -> etree.XMLSchema:
         """
-            Retorna o targetNamespace do XSD do evento com base no tipo de evento.
+            Retorna uma instância de XSD a partir de um arquivo.
 
             Args:
-                eventType (ESocialTipoEvento): O tipo de evento.
-                type (Literal['envio', 'retorno'], optional): O tipo de arquivo. O padrão é 'envio'.
+                eventType (ESocialTipoEvento): O tipo do evento.
+                type (Literal['envio', 'retorno'], optional): O tipo de operação (envio ou retorno). O padrão é 'envio'.
 
             Returns:
-                str: O targetNamespace do XSD do evento.
+                lxml.etree.XMLSchema: A instância de XSD.
         """
+
         if type == 'envio':
             xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f"{eventType.value[1]}.xsd")
         else:
             xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f"{eventType.value[2]}.xsd")
+        
+        with open(xsd_path, 'r', encoding='UTF-8') as file:
+            xmlschema = etree.parse(file)
+        
+        return etree.XMLSchema(xmlschema)
 
-        try:
-            tree = etree.parse(xsd_path)
-            root = tree.getroot()
-            return root.get('targetNamespace')
-        except Exception as e:
-            raise ValueError(f"Erro ao ler o namespace do XSD: {e}")
+    @staticmethod
+    def get_namespace_from_xsd(eventType: ESocialTipoEvento, type: Literal['envio', 'retorno'] = 'envio') -> str:
+            """
+                Retorna o targetNamespace do XSD do evento com base no tipo de evento.
+
+                Args:
+                    eventType (ESocialTipoEvento): O tipo de evento.
+                    type (Literal['envio', 'retorno'], optional): O tipo de arquivo. O padrão é 'envio'.
+
+                Returns:
+                    str: O targetNamespace do XSD do evento.
+            """
+            if type == 'envio':
+                xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f"{eventType.value[1]}.xsd")
+            else:
+                xsd_path = os.path.join(INTEGRATION_ROOT_PATH, 'config', 'xsd', f"{eventType.value[2]}.xsd")
+
+            try:
+                tree = etree.parse(xsd_path)
+                root = tree.getroot()
+                return root.get('targetNamespace')
+            except OSError as e:
+                raise ESocialError(f"Erro ao ler o arquivo XSD: {e}")
+            except etree.XMLSyntaxError as e:
+                raise ESocialError(f"Erro ao analisar o arquivo XSD: {e}")
+            except Exception as e:
+                raise ESocialError(f"Erro ao ler o namespace do XSD: {e}")
