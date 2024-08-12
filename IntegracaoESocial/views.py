@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from IntegracaoESocial.ESocial.esocial import IntegracaoESocial
 from IntegracaoESocial.ESocial.enums import ESocialAmbiente, ESocialTipoEvento, ESocialOperacao
 import os
-from IntegracaoESocial.ESocial.xml import XMLValidator, XSDHelper
+from IntegracaoESocial.ESocial.xml import XMLValidator, XSDHelper, XMLSigner
 from lxml import etree
 # Create your views here.
 

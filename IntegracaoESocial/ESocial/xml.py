@@ -1,7 +1,10 @@
 from lxml import etree
-from typing import Optional, Literal, Dict, Any
+from typing import Optional, Literal, Dict, Tuple, Any
 import os
 from datetime import datetime, UTC
+import signxml
+from signxml import XMLSigner
+from cryptography.hazmat.primitives import serialization
 from .errors import ESocialValidationError, ESocialError
 from .enums import ESocialTipoEvento
 from .constants import INTEGRATION_ROOT_PATH
@@ -51,17 +54,21 @@ class XMLHelper:
         **attrs: Atributos do elemento raiz.
     """
 
-    def __init__(self, root_element: str, xmlns: Optional[str] = None, **attrs: Any) -> None:
+    def __init__(self, root_element: str | etree._Element, xmlns: Optional[str] = None, **attrs: Any) -> None:
         """
         Inicializa a classe XMLHelper com um elemento raiz e atributos opcionais.
 
         Args:
-            root_element (str): Nome do elemento raiz.
+            root_element (str, etree._Element): Nome do elemento raiz ou o elemento raiz.
             xmlns (str, optional): Namespace XML padrão (xmlns). Defaults to None.
             **attrs: Atributos do elemento raiz.
         """
         self.nsmap = {None: xmlns} if xmlns is not None else {}
-        self.root = self.create_root_element(root_element, self.nsmap, **attrs)
+
+        if isinstance(root_element, str):
+            self.root = self.create_root_element(root_element, self.nsmap, **attrs)
+        elif isinstance(root_element, etree._Element):
+            self.root = root_element
 
     def create_root_element(self, root_tag: str, ns: Optional[Dict[Optional[str], str]] = None, **kwargs: Any) -> etree._Element:
         """
@@ -211,6 +218,82 @@ class XMLHelper:
         
         with open(file_path, 'w', encoding='UTF-8') as file:
             file.write(self.to_string())
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Converte um elemento XML e seus filhos em um dicionário, removendo namespaces das tags."""
+        def recursive_dict(el: etree._Element) -> Dict[str, Any]:
+            # Remove o namespace da tag
+            tag = el.tag.split('}', 1)[-1] if '}' in el.tag else el.tag
+            
+            # Se o elemento possui texto e não está vazio
+            if el.text and el.text.strip():
+                return {tag: el.text.strip()}
+            
+            # Cria um dicionário para os filhos do elemento
+            child_dict = {}
+            for child in el:
+                child_tag = child.tag.split('}', 1)[-1] if '}' in child.tag else child.tag
+                child_value = recursive_dict(child)
+
+                if child_tag in child_dict:
+                    # Se a tag já existe no dicionário, converte para lista
+                    if not isinstance(child_dict[child_tag], list):
+                        child_dict[child_tag] = [child_dict[child_tag]]
+                    child_dict[child_tag].append(child_value[child_tag])
+                else:
+                    child_dict[child_tag] = child_value[child_tag]
+            
+            return {tag: child_dict}
+
+        return recursive_dict(self.root)
+
+# Override signxml.XMLSigner.check_deprecated_methods() para ignorar os erros e poder utilizar o SHA1, remover quando o e-social aceitar assinaturas mais seguras
+class XMLSignerWithSHA1(XMLSigner):
+    def check_deprecated_methods(self):
+        pass
+
+class XMLSigner:
+    """
+        Classe para assinar arquivos XML.
+    """
+
+    def __init__(self, cert_data: Tuple) -> None:
+        """
+            Cria uma instância da classe XMLSigner.
+
+            Args:
+                cert_data (Tuple): Os dados do certificado.
+        """
+        self.cert = cert_data
+    
+    def sign(self, xml: etree._Element) -> etree._Element:
+        # Pegar o id do evento
+        evento_id = None
+        for child in xml.iterchildren():
+            evento_id = child.get('Id')
+            if evento_id:
+                break
+
+        # Converter o certificado para o formato PEM
+        cert_pem = self.cert[0].public_bytes(encoding=serialization.Encoding.PEM)
+        
+        # Converter a chave privada para o formato PEM
+        key_pem = self.cert[1].private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption()
+        )
+
+        signer = XMLSignerWithSHA1(
+            method=signxml.methods.enveloped,
+            signature_algorithm=signxml.algorithms.SignatureMethod.RSA_SHA1,
+            digest_algorithm=signxml.algorithms.DigestAlgorithm.SHA1,
+            c14n_algorithm=signxml.algorithms.CanonicalizationMethod.CANONICAL_XML_1_0,
+        )
+
+        signed = signer.sign(xml, key=key_pem, cert=cert_pem, reference_uri=evento_id)
+
+        return signed
 
 class XSDHelper:
     """
