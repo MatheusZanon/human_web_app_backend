@@ -6,18 +6,21 @@ from cryptography.hazmat.primitives.serialization import pkcs12
 from contextlib import contextmanager
 import tempfile
 import os
-from typing import Dict, Any, Union, List
+import json
+from typing import Dict, Any, Union, List, Optional
 from lxml import etree
 from datetime import datetime, UTC
-from .errors import ESocialError, ESocialValidationError
+from .errors import ESocialError, ESocialValidationError, ESocialConnectionError
 from .enums import ESocialWsdl, ESocialTipoEvento, ESocialAmbiente, ESocialOperacao
-from .constants import WS_URL, MAX_BATCH_SIZE, INTEGRATION_ROOT_PATH, EVENT_ID_PREFIX
+from .constants import WS_URL, MAX_BATCH_SIZE, INTEGRATION_ROOT_PATH, EVENT_ID_PREFIX, LOGGING_PATH
 from .services import EventLogService
-from .xml import XMLHelper, XMLValidator, XSDHelper, XMLSigner
+from .xml.helper import XMLHelper, XSDHelper
+from .xml.signer import XMLSigner
+from .xml.validator import XMLValidator
 import logging
 
 class IntegracaoESocial:
-    def __init__(self, cert_filename, cert_password, transmissorTpInsc, transmissorCpfCnpj, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO):
+    def __init__(self, cert_filename, cert_password, transmissorTpInsc, transmissorCpfCnpj, ambiente: ESocialAmbiente = ESocialAmbiente.PRODUCAO, event_logging_service: Optional[EventLogService] = None) -> None:
         previous_folder = os.path.normpath(INTEGRATION_ROOT_PATH + os.sep + os.pardir)
         cert_folder = os.path.join(previous_folder, 'certs')
         cert_path = os.path.join(cert_folder, cert_filename)
@@ -28,7 +31,7 @@ class IntegracaoESocial:
         self.ambiente = ambiente
         self.cert = self._load_cert()
         self.batch_to_send: List[etree._Element] = []
-        self.event_logging_service = EventLogService()
+        self.event_logging_service = event_logging_service
     
     def _load_cert(self):
         with open(self.cert_path, 'rb') as cert_file:
@@ -76,8 +79,13 @@ class IntegracaoESocial:
             # Criar o cliente SOAP
             transport = Transport(session=session)
             client = Client(wsdl_url, transport=transport)
-            
+            if self.event_logging_service:
+                self.event_logging_service.log(f"SOAP Client created: {wsdl_url}")
             yield client
+        except Exception as e:
+            if self.event_logging_service:
+                self.event_logging_service.log(f"Error creating SOAP client: {e}", logging.ERROR)
+            raise ESocialConnectionError(f"Error creating SOAP client: {e}")
         finally:
             # Limpar os arquivos temporários
             os.unlink(cert_file.name)
@@ -173,66 +181,77 @@ class IntegracaoESocial:
         else:
             raise ESocialValidationError("O tipo de operação S-1000 deve conter exatamente um tipo de operação: 'inclusao', 'alteracao' ou 'exclusao'.")
         
+        if self.event_logging_service:
+            self.event_logging_service.log(f"S-1000 Envelope created: ID: {evt_id}, XML: {s1000_xml.to_string()}")
         return s1000_xml.root
     
     def add_event_to_lote(self, event: etree._Element):
         if len(self.batch_to_send) < 50:
+            evento_id = None
+            for child in event.iterchildren():
+                evento_id = child.get('Id')
+                if evento_id:
+                    break
             self.batch_to_send.append(event)
+            if self.event_logging_service:
+                self.event_logging_service.log(f"Event added to batch: {evento_id}")
         else:
+            if self.event_logging_service:
+                self.event_logging_service.log(f"Batch limit reached: {MAX_BATCH_SIZE} events allowed", logging.ERROR)
             raise ESocialValidationError(f"O lote de eventos não pode ter mais de {MAX_BATCH_SIZE} eventos")
 
     def _create_send_envelope(self, group_id: str):
         try:
-            
-                # Extrair informações do empregador do primeiro evento válido
-                ide_empregador = None
-                for evento in self.batch_to_send:
-                    for child in evento.iterchildren():
-                        if child.tag == "ideEmpregador":
-                            ide_empregador = child
+            # Extrair informações do empregador do primeiro evento válido
+            ide_empregador = None
+            for evento in self.batch_to_send:
+                for child in evento.iterchildren():
+                    if child.tag == "ideEmpregador":
+                        ide_empregador = child
 
-                    ns = {"ns": "*"}
-                    ide_empregador = evento.find(".//ns:ideEmpregador", namespaces=ns)
-                    if ide_empregador is not None:
+                ns = {"ns": "*"}
+                ide_empregador = evento.find(".//ns:ideEmpregador", namespaces=ns)
+                if ide_empregador is not None:
+                    break
+
+            if ide_empregador is None:
+                raise ESocialValidationError("Elemento ideEmpregador não encontrado em nenhum evento")
+
+            tpInsc = ide_empregador.find("ns:tpInsc", namespaces=ns)
+            nrInsc = ide_empregador.find("ns:nrInsc", namespaces=ns)
+
+            if tpInsc is None or nrInsc is None:
+                raise ESocialValidationError("Elementos tpInsc ou nrInsc não encontrados no elemento ideEmpregador")
+
+            # Criar o elemento raiz do lote com prefixo de namespace
+            nsmap = XSDHelper().get_namespace_from_xsd(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
+            lote_eventos_xml = XMLHelper("eSocial", nsmap)
+            lote_eventos_xml.add_element(None, "envioLoteEventos", grupo=group_id)
+
+            lote_eventos_xml.add_element("envioLoteEventos", "ideEmpregador")
+            lote_eventos_xml.add_element("envioLoteEventos/ideEmpregador", "tpInsc", text=tpInsc.text)
+            lote_eventos_xml.add_element("envioLoteEventos/ideEmpregador", "nrInsc", text=nrInsc.text)
+
+            lote_eventos_xml.add_element("envioLoteEventos", "ideTransmissor")
+            lote_eventos_xml.add_element("envioLoteEventos/ideTransmissor", "tpInsc", text=self.transmissorTpInsc)
+            lote_eventos_xml.add_element("envioLoteEventos/ideTransmissor", "nrInsc", text=self.transmissorCpfCnpj)
+
+            lote_eventos_xml.add_element("envioLoteEventos", "eventos")
+            
+            for evento in self.batch_to_send:
+                evento_id = None
+                for child in evento.iterchildren():
+                    evento_id = child.get('Id')
+                    if evento_id:
                         break
 
-                if ide_empregador is None:
-                    raise ESocialValidationError("Elemento ideEmpregador não encontrado em nenhum evento")
-
-                tpInsc = ide_empregador.find("ns:tpInsc", namespaces=ns)
-                nrInsc = ide_empregador.find("ns:nrInsc", namespaces=ns)
-
-                if tpInsc is None or nrInsc is None:
-                    raise ESocialValidationError("Elementos tpInsc ou nrInsc não encontrados no elemento ideEmpregador")
-
-                # Criar o elemento raiz do lote com prefixo de namespace
-                nsmap = XSDHelper().get_namespace_from_xsd(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
-                lote_eventos_xml = XMLHelper("eSocial", nsmap)
-                lote_eventos_xml.add_element(None, "envioLoteEventos", grupo=group_id)
-
-                lote_eventos_xml.add_element("envioLoteEventos", "ideEmpregador")
-                lote_eventos_xml.add_element("envioLoteEventos/ideEmpregador", "tpInsc", text=tpInsc.text)
-                lote_eventos_xml.add_element("envioLoteEventos/ideEmpregador", "nrInsc", text=nrInsc.text)
-
-                lote_eventos_xml.add_element("envioLoteEventos", "ideTransmissor")
-                lote_eventos_xml.add_element("envioLoteEventos/ideTransmissor", "tpInsc", text=self.transmissorTpInsc)
-                lote_eventos_xml.add_element("envioLoteEventos/ideTransmissor", "nrInsc", text=self.transmissorCpfCnpj)
-
-                lote_eventos_xml.add_element("envioLoteEventos", "eventos")
+                if not evento_id:
+                    raise ESocialValidationError("Atributo 'Id' não encontrado em nenhum elemento do evento")
                 
-                for evento in self.batch_to_send:
-                    evento_id = None
-                    for child in evento.iterchildren():
-                        evento_id = child.get('Id')
-                        if evento_id:
-                            break
-
-                    if not evento_id:
-                        raise ESocialValidationError("Atributo 'Id' não encontrado em nenhum elemento do evento")
-                    
-                    event_root = lote_eventos_xml.add_element("envioLoteEventos/eventos", "evento", Id=evento_id)
-                    event_root.append(evento)
-                return lote_eventos_xml.root
+                event_root = lote_eventos_xml.add_element("envioLoteEventos/eventos", "evento", Id=evento_id)
+                event_root.append(evento)
+            
+            return lote_eventos_xml.root
         except Exception as e:
             logging.error(f"Erro ao processar o lote: {str(e)}")
         
@@ -246,6 +265,8 @@ class IntegracaoESocial:
 
                 xsd_batch = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS)
                 XMLValidator(lote_eventos, xsd_batch).validate()
+                if self.event_logging_service:
+                    self.event_logging_service.log(f"Batch validated: Group ID: {group_id}")
 
                 # client.wsdl.dump()
 
@@ -253,23 +274,36 @@ class IntegracaoESocial:
 
                 # Enviar o lote
                 response = client.service.EnviarLoteEventos(BatchElement(loteEventos=lote_eventos))
+                if self.event_logging_service:
+                    self.event_logging_service.log(f"Batch sent: Group ID: {group_id}")
                 
                 # response xml
-                # print(etree.tostring(response, pretty_print=True).decode('utf-8'))
+                # print(XMLHelper(response).to_string())
 
                 xsd_response = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_ENVIO_LOTE_EVENTOS, 'retorno')
                 XMLValidator(response, xsd_response).validate()
+                if self.event_logging_service:
+                    self.event_logging_service.log(f"Batch response validated: Group ID: {group_id}, XML: {XMLHelper(response).to_string()}")
 
                 response_json = self.decode_response(response)
 
+                if self.event_logging_service:
+                    self.event_logging_service.log(f"Batch response decoded: Group ID: {group_id}, JSON: {json.dumps(response_json, indent=4, ensure_ascii=False)}")
+
                 if clear_batch:
                     self.batch_to_send.clear()
+                    if self.event_logging_service:
+                        self.event_logging_service.log(f"Batch cleared: Group ID: {group_id}")
 
                 return response_json
         except ESocialError as ee:
-            print(f"Erro E-social: {ee.message}")
+            if self.event_logging_service:
+                self.event_logging_service.log(f"Batch failed: Group ID: {group_id}, Error: {str(ee)}", logging.ERROR)
+            raise ee
         except Exception as e:
-            print(f"Erro ao enviar lote: {str(e)}")
+            if self.event_logging_service:
+                self.event_logging_service.log(f"Batch failed: Group ID: {group_id}, Error: {str(e)}", logging.ERROR)
+            raise e
     
 
     def decode_response(self, response: etree._Element) -> Dict[str, Any]:

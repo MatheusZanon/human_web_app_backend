@@ -5,15 +5,20 @@ from rest_framework.decorators import action, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from IntegracaoESocial.ESocial.esocial import IntegracaoESocial
 from IntegracaoESocial.ESocial.enums import ESocialAmbiente, ESocialTipoEvento, ESocialOperacao
-import os
-from IntegracaoESocial.ESocial.xml import XMLValidator, XSDHelper, XMLSigner
-from lxml import etree
+from IntegracaoESocial.ESocial.xml.validator import XMLValidator
+from IntegracaoESocial.ESocial.xml.helper import XSDHelper
+from IntegracaoESocial.ESocial.services import EventLogService
+from IntegracaoESocial.ESocial.constants import LOGGING_PATH
 # Create your views here.
 
 # @permission_classes([IsAuthenticated])
 class EmpregadorViewSet(viewsets.ViewSet):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+
+        # Inicialize o serviço de log
+        event_logging_service = EventLogService(log_dir=LOGGING_PATH)
+
         # Inicialize a integração com o eSocial
         # Nota: Você pode querer mover essa inicialização para um lugar mais apropriado,
         # como um middleware ou uma configuração global
@@ -22,7 +27,8 @@ class EmpregadorViewSet(viewsets.ViewSet):
             cert_password='123456',
             transmissorTpInsc='1',
             transmissorCpfCnpj='12345678912345',
-            ambiente=ESocialAmbiente.DESENVOLVIMENTO  # ou o ambiente desejado
+            ambiente=ESocialAmbiente.DESENVOLVIMENTO,  # ou o ambiente desejado
+            event_logging_service=event_logging_service
         )
 
     @action(detail=False, methods=['post'])

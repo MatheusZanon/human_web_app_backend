@@ -1,48 +1,10 @@
 from lxml import etree
-from typing import Optional, Literal, Dict, Tuple, Any
-import os
+from typing import Optional, Literal, Dict, Any
 from datetime import datetime, UTC
-import signxml
-from signxml import XMLSigner
-from cryptography.hazmat.primitives import serialization
-from .errors import ESocialValidationError, ESocialError
-from .enums import ESocialTipoEvento
-from .constants import INTEGRATION_ROOT_PATH
-
-class XMLValidator:
-    """
-        Classe para auxiliar na validação de arquivos XML.
-
-        Args:
-            xml: lxml.etree._ElementTree
-            xsd: lxml.etree.XMLSchema
-    """
-
-    def __init__(self, xml: etree._ElementTree, xsd: etree.XMLSchema) -> None:
-        self.xml = xml
-        self.xsd = xsd
-        self.errors = None
-    
-    def is_valid(self) -> bool:
-        """
-            Verifica se o arquivo XML é válido pelo esquema XSD.
-
-            Returns:
-                bool: True se o arquivo for válido pelo esquema XSD, False caso contrário.
-        """
-
-        is_valid = self.xsd.validate(self.xml)
-        if not is_valid:
-            self.errors = self.xsd.error_log
-        return is_valid
-    
-    def validate(self) -> None:
-        """
-            Verifica se o arquivo XML é válido pelo esquema XSD, e lança uma exceção caso o arquivo seja inválido.
-        """
-        if not self.is_valid():
-            raise ESocialValidationError(self.errors)
-    
+import os
+from ..enums import ESocialTipoEvento
+from ..constants import INTEGRATION_ROOT_PATH
+from ..errors import ESocialError
 
 class XMLHelper:
     """
@@ -246,55 +208,7 @@ class XMLHelper:
             return {tag: child_dict}
 
         return recursive_dict(self.root)
-
-# Override signxml.XMLSigner.check_deprecated_methods() para ignorar os erros e poder utilizar o SHA1, remover quando o e-social aceitar assinaturas mais seguras
-class XMLSignerWithSHA1(XMLSigner):
-    def check_deprecated_methods(self):
-        pass
-
-class XMLSigner:
-    """
-        Classe para assinar arquivos XML.
-    """
-
-    def __init__(self, cert_data: Tuple) -> None:
-        """
-            Cria uma instância da classe XMLSigner.
-
-            Args:
-                cert_data (Tuple): Os dados do certificado.
-        """
-        self.cert = cert_data
     
-    def sign(self, xml: etree._Element) -> etree._Element:
-        # Pegar o id do evento
-        evento_id = None
-        for child in xml.iterchildren():
-            evento_id = child.get('Id')
-            if evento_id:
-                break
-
-        # Converter o certificado para o formato PEM
-        cert_pem = self.cert[0].public_bytes(encoding=serialization.Encoding.PEM)
-        
-        # Converter a chave privada para o formato PEM
-        key_pem = self.cert[1].private_bytes(
-            encoding=serialization.Encoding.PEM,
-            format=serialization.PrivateFormat.PKCS8,
-            encryption_algorithm=serialization.NoEncryption()
-        )
-
-        signer = XMLSignerWithSHA1(
-            method=signxml.methods.enveloped,
-            signature_algorithm=signxml.algorithms.SignatureMethod.RSA_SHA1,
-            digest_algorithm=signxml.algorithms.DigestAlgorithm.SHA1,
-            c14n_algorithm=signxml.algorithms.CanonicalizationMethod.CANONICAL_XML_1_0,
-        )
-
-        signed = signer.sign(xml, key=key_pem, cert=cert_pem, reference_uri=evento_id)
-
-        return signed
-
 class XSDHelper:
     """
         Classe para auxiliar na manipulação e extração de informações de um arquivo XSD.

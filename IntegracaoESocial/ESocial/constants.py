@@ -7,6 +7,8 @@ INTEGRATION_ROOT_PATH = os.path.dirname(os.path.abspath(__file__))
     Caminho da raiz da integração. Usado para encontrar certificados, XSDs e WSDLs.
 """
 
+LOGGING_PATH = os.path.join(INTEGRATION_ROOT_PATH, 'logs')
+
 EVENT_ID_PREFIX = 'ID'
 """
     Prefixo dos IDs dos eventos. Usado para identificar eventos na integração.
