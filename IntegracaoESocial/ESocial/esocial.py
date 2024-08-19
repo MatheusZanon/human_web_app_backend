@@ -14,7 +14,7 @@ from .errors import ESocialError, ESocialValidationError, ESocialConnectionError
 from .enums import ESocialWsdl, ESocialTipoEvento, ESocialAmbiente, ESocialOperacao
 from .constants import WS_URL, MAX_BATCH_SIZE, INTEGRATION_ROOT_PATH, EVENT_ID_PREFIX, LOGGING_PATH
 from .services import EventLogService
-from .xml.helper import XMLHelper, XSDHelper
+from .xml.helper import XMLHelper, XSDHelper, ESocialEventIDGenerator
 from .xml.signer import XMLSigner
 from .xml.validator import XMLValidator
 import logging
@@ -62,8 +62,8 @@ class IntegracaoESocial:
         )
 
         # Criar arquivos temporários para o certificado e a chave
-        cert_file = tempfile.NamedTemporaryFile(delete=False)
-        key_file = tempfile.NamedTemporaryFile(delete=False)
+        cert_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pem')
+        key_file = tempfile.NamedTemporaryFile(delete=False, suffix='.pem')
 
         try:
             # Escrever o certificado e a chave nos arquivos temporários
@@ -81,6 +81,7 @@ class IntegracaoESocial:
             client = Client(wsdl_url, transport=transport)
             if self.event_logging_service:
                 self.event_logging_service.log(f"SOAP Client created: {wsdl_url}")
+                cert_info = "Certificado configurado" if session.cert else "Certificado não configurado"
             yield client
         except Exception as e:
             if self.event_logging_service:
@@ -91,7 +92,7 @@ class IntegracaoESocial:
             os.unlink(cert_file.name)
             os.unlink(key_file.name)
     
-    def generate_event_id(self, cnpj_cpf: Union[str, int], ) -> str:
+    def generate_event_id(self, cnpj_cpf: Union[str, int]) -> str:
         """
         Gera um ID de evento baseado no CNPJ/CPF do emissor e timestamp atual.
 
@@ -99,7 +100,7 @@ class IntegracaoESocial:
             cnpj_cpf (str | int): O CNPJ ou CPF a ser utilizado como base para o ID.
 
         Returns:
-            str: Um identificador único para o evento, com no máximo 34 caracteres.
+            str: Um identificador único para o evento, com 36 caracteres.
         """
         
         # Garantir que cnpj_cpf é uma string
@@ -110,23 +111,28 @@ class IntegracaoESocial:
         sanitized_cnpj_cpf = ''.join(filter(str.isdigit, cnpj_cpf))
         
         # Verificar o comprimento do CNPJ/CPF
-        if len(sanitized_cnpj_cpf) > 14:
-            raise ESocialValidationError("CNPJ/CPF inválido")
-        
-        if len(sanitized_cnpj_cpf) < 11:
+        if len(sanitized_cnpj_cpf) == 14:
+            type_of_insc = "1"  # CNPJ
+            sanitized_cnpj_cpf = sanitized_cnpj_cpf.ljust(14, '0')
+        elif len(sanitized_cnpj_cpf) == 11:
+            type_of_insc = "2"  # CPF
+            sanitized_cnpj_cpf = sanitized_cnpj_cpf.ljust(11, '0')
+        else:
             raise ESocialValidationError("CNPJ/CPF inválido")
         
         # Obter a data e hora atual no formato UTC
         current_time = datetime.now(UTC).strftime("%Y%m%d%H%M%S")
+        
+        # Gerar o número sequencial com 5 dígitos
+        sequence_number = f"{len(self.batch_to_send) + 1:05}"
 
-        # Gerar o número do ID com base no CNPJ/CPF e timestamp
-        id_number = f"{sanitized_cnpj_cpf}{current_time}{len(self.batch_to_send) + 1}"
-        
-        # Completar com zeros caso o id_number não tenha 34 caracteres
-        id_number = id_number.ljust(34, '0')
-        
-        # Criar o ID completo e garantir que tenha no máximo 34 caracteres
-        full_id = f"{EVENT_ID_PREFIX}{id_number[:34]}"
+        # Construir o ID completo
+        full_id = f"ID{type_of_insc}{sanitized_cnpj_cpf}{current_time}{sequence_number}"
+
+        # Verificar se o ID resultante tem exatamente 36 caracteres
+        if len(full_id) != 36:
+            raise ESocialValidationError("ID gerado inválido")
+
         return full_id
     
     def sign(self, xml: etree._Element) -> etree._Element:
@@ -139,7 +145,8 @@ class IntegracaoESocial:
 
         s1000_xml = XMLHelper("eSocial", nsmap)
 
-        evt_id = self.generate_event_id(issuer_cnpj_cpf)
+        # evt_id = self.generate_event_id(issuer_cnpj_cpf)
+        evt_id = ESocialEventIDGenerator(self.batch_to_send).generate_event_id(issuer_cnpj_cpf[:8].ljust(14, '0'))
 
         s1000_xml.add_element(None, "evtInfoEmpregador", Id=evt_id)
 
@@ -151,12 +158,13 @@ class IntegracaoESocial:
         s1000_xml.add_element("evtInfoEmpregador", "ideEmpregador")
         if len(str(issuer_cnpj_cpf)) == 14: # Se for cnpj o tipo de inscrição deve ser 1
             s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "tpInsc", text="1")
+            s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "nrInsc", text=str(issuer_cnpj_cpf)[0:8])
         elif len(str(issuer_cnpj_cpf)) == 11: # Se for cpf o tipo de inscrição deve ser 2
             s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "tpInsc", text="2")
+            s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "nrInsc", text=str(issuer_cnpj_cpf))
         else:
             raise ESocialValidationError(f"O CNPJ ou CPF do emissor deve ter 14 ou 11 caracteres respectivamente.")
         
-        s1000_xml.add_element("evtInfoEmpregador/ideEmpregador", "nrInsc", text=str(issuer_cnpj_cpf))
 
         s1000_xml.add_element("evtInfoEmpregador", "infoEmpregador")
 
@@ -174,6 +182,39 @@ class IntegracaoESocial:
             s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao", "idePeriodo")
             s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/idePeriodo", "iniValid", text=event_data['infoEmpregador']['inclusao']['idePeriodo']['iniValid'])
             s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/idePeriodo", "fimValid", text=event_data['infoEmpregador']['inclusao']['idePeriodo']['fimValid'])
+
+            if event_data['infoEmpregador']['inclusao']['infoCadastro']:
+                s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao", "infoCadastro")
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('classTrib'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "classTrib", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['classTrib'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indCoop'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indCoop", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indCoop'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indConstr'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indConstr", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indConstr'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indDesFolha'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indDesFolha", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indDesFolha'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indOpcCP'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indOpcCP", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indOpcCP'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indPorte'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indPorte", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indPorte'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indOptRegEletron'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indOptRegEletron", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indOptRegEletron'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('cnpjEFR'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "cnpjEFR", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['cnpjEFR'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('dtTrans11096'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "dtTrans11096", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['dtTrans11096'])
+
+                if event_data['infoEmpregador']['inclusao']['infoCadastro'].get('indTribFolhaPisCofins'):
+                    s1000_xml.add_element("evtInfoEmpregador/infoEmpregador/inclusao/infoCadastro", "indTribFolhaPisCofins", text=event_data['infoEmpregador']['inclusao']['infoCadastro']['indTribFolhaPisCofins'])
         elif present_operations[0] == 'alteracao':
             s1000_xml.add_element("evtInfoEmpregador/infoEmpregador", "alteracao")
         elif present_operations[0] == 'exclusao':
@@ -251,9 +292,28 @@ class IntegracaoESocial:
                 event_root = lote_eventos_xml.add_element("envioLoteEventos/eventos", "evento", Id=evento_id)
                 event_root.append(evento)
             
+            print(lote_eventos_xml.to_string())
+            
             return lote_eventos_xml.root
         except Exception as e:
             logging.error(f"Erro ao processar o lote: {str(e)}")
+    
+    def _create_retrive_envelope(self, protocol_number: str):
+        try:
+            if not protocol_number:
+                raise ESocialValidationError("O 'protocoloEnvio' não pode ser vazio")
+            if not self.transmissorCpfCnpj:
+                raise ESocialValidationError("Cpf ou Cnpj do transmissor não informado")
+
+            # Criar o elemento raiz do lote com prefixo de namespace
+            nsmap = XSDHelper().get_namespace_from_xsd(ESocialTipoEvento.EVT_CONSULTAR_LOTE_EVENTOS)
+            retrieve_envelope = XMLHelper("eSocial", nsmap)
+            retrieve_envelope.add_element(None, "consultaLoteEventos")
+            retrieve_envelope.add_element("consultaLoteEventos", "protocoloEnvio", text=str(protocol_number))
+
+            return retrieve_envelope.root
+        except Exception as e:
+            logging.error(f"Erro ao processar a consulta do lote: {str(e)}")
         
     def send(self, wsdl: str, group_id: str = 1, clear_batch: bool = True) -> Dict[str, Any]:
         try:
@@ -269,6 +329,7 @@ class IntegracaoESocial:
                     self.event_logging_service.log(f"Batch validated: Group ID: {group_id}")
 
                 # client.wsdl.dump()
+                XMLHelper(lote_eventos).to_file()
 
                 BatchElement = client.get_element('ns1:EnviarLoteEventos')
 
@@ -276,6 +337,10 @@ class IntegracaoESocial:
                 response = client.service.EnviarLoteEventos(BatchElement(loteEventos=lote_eventos))
                 if self.event_logging_service:
                     self.event_logging_service.log(f"Batch sent: Group ID: {group_id}")
+                    self.event_logging_service.log(f"Transmissor tpInsc: {self.transmissorTpInsc}")
+                    self.event_logging_service.log(f"Transmissor nrInsc: {self.transmissorCpfCnpj}")
+                    self.event_logging_service.log(f"Empregador tpInsc: {lote_eventos.find('.//ideEmpregador/tpInsc', lote_eventos.nsmap).text}")
+                    self.event_logging_service.log(f"Empregador nrInsc: {lote_eventos.find('.//ideEmpregador/nrInsc', lote_eventos.nsmap).text}")
                 
                 # response xml
                 # print(XMLHelper(response).to_string())
@@ -303,6 +368,34 @@ class IntegracaoESocial:
         except Exception as e:
             if self.event_logging_service:
                 self.event_logging_service.log(f"Batch failed: Group ID: {group_id}, Error: {str(e)}", logging.ERROR)
+            raise e
+    
+    def retrieve(self, wsdl: str, protocol_number: str) -> Dict[str, Any]:
+        try:
+            self.event_logging_service.log(f"Retrieving batch: {protocol_number} | wsdl: {wsdl}")
+            if not protocol_number:
+                raise ESocialValidationError("O 'protocoloEnvio' não pode ser vazio")
+            
+            with self._create_client(wsdl) as client:
+                batch_to_search = self._create_retrive_envelope(protocol_number)
+
+                SearchElement = client.get_element('ns1:ConsultarLoteEventos')
+
+                print(etree.tostring(batch_to_search, pretty_print=True).decode('utf-8'))
+
+                # validate batch
+                xsd_batch = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_CONSULTAR_LOTE_EVENTOS)
+                XMLValidator(batch_to_search, xsd_batch).validate()
+
+                response = client.service.ConsultarLoteEventos(SearchElement(consulta=batch_to_search))
+
+                xsd_response = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_CONSULTAR_LOTE_EVENTOS, 'retorno')
+                XMLValidator(response, xsd_response).validate()
+
+                response_json = self.decode_response(response)
+                
+                return response_json
+        except Exception as e:
             raise e
     
 

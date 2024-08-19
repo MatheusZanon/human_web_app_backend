@@ -13,12 +13,13 @@ class ESocialTipoEvento(Enum):
     """
     Enum para os tipos de eventos do e-social suportados na Integração.
 
-    Cada tupla contém o nome do XSD e o nome do elemento raiz do evento.
-    Exemplo: ("evtInfoEmpregador", "evtInfoEmpregador")
+    Cada tupla contém o nome do XSD, o nome do elemento raiz do evento e o xsd do retorno do evento (opcional) respectivamente.
+    Exemplo: ("evtInfoEmpregador", "evtInfoEmpregador", "")
     """
     EVT_INFO_EMPREGADOR = ("evtInfoEmpregador", "evtInfoEmpregador", "")
-    EVT_ADMISSAO_PRELIMINAR = ("evtAdmissaoPreliminar", "evtAdmPrelim", "")
+    EVT_ADMISSAO_PRELIMINAR = ("evtAdmPrelim", "evtAdmissaoPreliminar", "")
     EVT_ENVIO_LOTE_EVENTOS = ("envioLoteEventos", "EnvioLoteEventos-v1_1_1", "RetornoEnvioLoteEventos-v1_1_0")
+    EVT_CONSULTAR_LOTE_EVENTOS = ("consultaLoteEventos", "consultaLoteEventos-v1_0_0", "retornoProcessamentoLote-v1_3_0")
 
 class ESocialOperacao(Enum):
     # Envio de Lote de Eventos

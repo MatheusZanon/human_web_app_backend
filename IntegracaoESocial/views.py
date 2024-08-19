@@ -6,7 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from IntegracaoESocial.ESocial.esocial import IntegracaoESocial
 from IntegracaoESocial.ESocial.enums import ESocialAmbiente, ESocialTipoEvento, ESocialOperacao
 from IntegracaoESocial.ESocial.xml.validator import XMLValidator
-from IntegracaoESocial.ESocial.xml.helper import XSDHelper
+from IntegracaoESocial.ESocial.xml.helper import XSDHelper, XMLHelper
 from IntegracaoESocial.ESocial.services import EventLogService
 from IntegracaoESocial.ESocial.constants import LOGGING_PATH
 # Create your views here.
@@ -26,7 +26,7 @@ class EmpregadorViewSet(viewsets.ViewSet):
             cert_filename="HUMAN_SOLUCOES_E_DESENVOLVIMENTOS_EM_RECURSOS_HUM_SENHA 123456.pfx",
             cert_password='123456',
             transmissorTpInsc='1',
-            transmissorCpfCnpj='12345678912345',
+            transmissorCpfCnpj='27480830000110',
             ambiente=ESocialAmbiente.DESENVOLVIMENTO,  # ou o ambiente desejado
             event_logging_service=event_logging_service
         )
@@ -36,7 +36,8 @@ class EmpregadorViewSet(viewsets.ViewSet):
         try:
             wsdl = self.esocial.get_wsdl_url(ESocialOperacao.SEND_LOTE)
 
-            xml = self.esocial.create_s1000_envelope(request.data, 12345678912345, 0)
+            xml = self.esocial.create_s1000_envelope(request.data, request.data['ideEmpregador']['nrInsc'], 0)
+            # print(xml.to_string('utf-8', pretty_print=True))
             xml = self.esocial.sign(xml)
             xsd = XSDHelper().xsd_from_file(ESocialTipoEvento.EVT_INFO_EMPREGADOR)
             XMLValidator(xml, xsd).validate()
@@ -57,16 +58,12 @@ class EmpregadorViewSet(viewsets.ViewSet):
     @action(detail=False, methods=['get'])
     def consultar_lote(self, request):
         try:
-            protocolo = request.query_params.get('protocolo')
-            id_lote = request.query_params.get('id_lote')
+            wsdl = self.esocial.get_wsdl_url(ESocialOperacao.RETRIEVE_LOTE_RESULT)
+            protocolo = request.query_params.get('protocoloEnvio')
 
-            resposta = self.esocial.consultar_lote(id_lote)
+            resposta = self.esocial.retrieve(wsdl, protocolo)
 
-            # Processar a resposta
-            resposta_json = self.esocial.xml_to_dict(resposta)
-            print(resposta_json)
-            # Nota: Adapte isso com base na estrutura real da resposta do eSocial
-            return Response(resposta_json, status=status.HTTP_200_OK)
+            return Response(resposta, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({

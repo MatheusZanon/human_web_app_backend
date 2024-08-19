@@ -1,10 +1,12 @@
 from lxml import etree
 from typing import Optional, Literal, Dict, Any
 from datetime import datetime, UTC
+from typing import Union
+import pytz
 import os
 from ..enums import ESocialTipoEvento
 from ..constants import INTEGRATION_ROOT_PATH
-from ..errors import ESocialError
+from ..errors import ESocialError, ESocialValidationError
 
 class XMLHelper:
     """
@@ -264,3 +266,47 @@ class XSDHelper:
                 raise ESocialError(f"Erro ao analisar o arquivo XSD: {e}")
             except Exception as e:
                 raise ESocialError(f"Erro ao ler o namespace do XSD: {e}")
+
+class ESocialEventIDGenerator:
+    def __init__(self, batch_to_send):
+        self.batch_to_send = batch_to_send
+
+    def generate_event_id(self, cnpj_cpf: Union[str, int]) -> str:
+        """
+        Gera um ID de evento baseado no CNPJ/CPF do emissor e timestamp atual.
+
+        Args:
+            cnpj_cpf (str | int): O CNPJ ou CPF a ser utilizado como base para o ID.
+
+        Returns:
+            str: Um identificador único para o evento, com exatamente 36 caracteres.
+        """
+        
+        # Garantir que cnpj_cpf é uma string
+        if isinstance(cnpj_cpf, int):
+            cnpj_cpf = str(cnpj_cpf)
+        
+        # Sanitizar o CNPJ/CPF removendo caracteres não numéricos se necessário
+        sanitized_cnpj_cpf = ''.join(filter(str.isdigit, cnpj_cpf))
+        
+        # Verificar o tipo de inscrição (1 = CNPJ, 2 = CPF)
+        if len(sanitized_cnpj_cpf) == 14:
+            tipo_inscricao = '1'  # CNPJ
+            cnpj_cpf = sanitized_cnpj_cpf.ljust(14, '0')  # Completa com zeros à direita se necessário
+        elif len(sanitized_cnpj_cpf) == 11:
+            tipo_inscricao = '2'  # CPF
+            cnpj_cpf = sanitized_cnpj_cpf  # CPF já tem 11 dígitos
+        else:
+            raise ESocialValidationError("CNPJ/CPF inválido")
+        
+        # Obter a data e hora atual no formato UTC
+        current_time = datetime.now(pytz.UTC).strftime("%Y%m%d%H%M%S")
+        
+        # Gerar o número sequencial da chave (5 dígitos, zeros à esquerda)
+        numero_sequencial = str(len(self.batch_to_send) + 1).zfill(5)
+        
+        # Criar o ID completo conforme a regra
+        full_id = f"ID{tipo_inscricao}{cnpj_cpf}{current_time}{numero_sequencial}"
+        
+        # Retornar o ID completo que deve ter exatamente 36 caracteres
+        return full_id

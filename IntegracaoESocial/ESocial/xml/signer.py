@@ -1,11 +1,11 @@
 from lxml import etree
 from typing import Tuple
 import signxml
-from signxml import XMLSigner
+from signxml import XMLSigner as BaseXMLSigner
 from cryptography.hazmat.primitives import serialization
 
 # Override signxml.XMLSigner.check_deprecated_methods() para ignorar os erros e poder utilizar o SHA1, remover quando o e-social aceitar assinaturas mais seguras
-class XMLSignerWithSHA1(XMLSigner):
+class XMLSignerWithSHA1(BaseXMLSigner):
     def check_deprecated_methods(self):
         pass
 
@@ -41,13 +41,22 @@ class XMLSigner:
             encryption_algorithm=serialization.NoEncryption()
         )
 
+        """
         signer = XMLSignerWithSHA1(
             method=signxml.methods.enveloped,
-            signature_algorithm=signxml.algorithms.SignatureMethod.RSA_SHA1,
+            signature_algorithm=signxml.algorithms.SignatureMethod.RSA_SHA256,
             digest_algorithm=signxml.algorithms.DigestAlgorithm.SHA1,
             c14n_algorithm=signxml.algorithms.CanonicalizationMethod.CANONICAL_XML_1_0,
         )
+        """
 
-        signed = signer.sign(xml, key=key_pem, cert=cert_pem, reference_uri=evento_id)
+        signer = BaseXMLSigner(
+            method=signxml.methods.enveloped,
+            signature_algorithm=signxml.algorithms.SignatureMethod.RSA_SHA256,
+            digest_algorithm=signxml.algorithms.DigestAlgorithm.SHA256,
+            c14n_algorithm=signxml.algorithms.CanonicalizationMethod.CANONICAL_XML_1_0,
+        )
+
+        signed = signer.sign(xml, key=key_pem, cert=cert_pem)
 
         return signed
