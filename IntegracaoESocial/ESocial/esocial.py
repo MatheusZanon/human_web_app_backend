@@ -226,6 +226,124 @@ class IntegracaoESocial:
             self.event_logging_service.log(f"S-1000 Envelope created: ID: {evt_id}, XML: {s1000_xml.to_string()}")
         return s1000_xml.root
     
+    def create_s1200_envelope(self, evt_data: Dict[str, Any], issuer_cnpj_cpf: str = None, user_id: int = None):
+        """
+        Cria o envelope do evento S-1200. (Remuneração de trabalhador vinculado ao Regime Geral de Previdência Social)
+
+        Deve ser utilizado para informar rubricas de natureza remuneratória ou não para todos os seus trabalhadores, estagiários e bolsistas, exceto àqueles vinculados ao RPPS (Regime Próprio de Previdência Social) cuja informação deve ser prestada em evento próprio (S-1202).
+        """
+        nsmap = XSDHelper().get_namespace_from_xsd(ESocialTipoEvento.EVT_REMUNERACAO_TRABALHADOR_RGPS)
+
+        evt_id = ESocialEventIDGenerator(self.batch_to_send).generate_event_id(issuer_cnpj_cpf[:8].ljust(14, '0'))
+
+        s1200_xml = XMLHelper("eSocial", nsmap)
+
+        s1200_xml.add_element(None, ESocialTipoEvento.EVT_REMUNERACAO_TRABALHADOR_RGPS.value[0], Id=evt_id)
+
+        s1200_xml.add_element("evtRemun", "ideEvento")
+        s1200_xml.add_element("evtRemun/ideEvento", "indRetif", text=evt_data['ideEvento']['indRetif'])
+        if evt_data['ideEvento']['indRetif'] == '2':
+            s1200_xml.add_element("evtRemun/ideEvento", "nrRecibo", text=evt_data['ideEvento']['nrRecibo'])
+        s1200_xml.add_element("evtRemun/ideEvento", "indApuracao", text=evt_data['ideEvento']['indApuracao'])
+        if evt_data['ideEvento']['indApuracao'] == '1':
+            mes_ano_ref = datetime.strptime(evt_data['ideEvento']['perApur'], '%m%Y').strftime('%Y%m')
+            s1200_xml.add_element("evtRemun/ideEvento", "perApur", text=mes_ano_ref)
+        elif evt_data['ideEvento']['indApuracao'] == '2':
+            mes_ano_ref = datetime.strptime(evt_data['ideEvento']['perApur'], '%Y%m').strftime('%Y')
+            s1200_xml.add_element("evtRemun/ideEvento", "perApur", text=mes_ano_ref)
+        s1200_xml.add_element("evtRemun/ideEvento", "indGuia", text="1") # Só existe 1 tipo de guia, deveria criar um parametro para ser enviado da mesma forma?
+        s1200_xml.add_element("evtRemun/ideEvento", "tpAmb", text=evt_data['ideEvento']['tpAmb'])
+        s1200_xml.add_element("evtRemun/ideEvento", "procEmi", text=evt_data['ideEvento']['procEmi'])
+        s1200_xml.add_element("evtRemun/ideEvento", "verProc", text=evt_data['ideEvento']['verProc'])
+
+        s1200_xml.add_element("evtRemun", "ideEmpregador")
+        s1200_xml.add_element("evtRemun/ideEmpregador", "tpInsc", text=evt_data['ideEmpregador']['tpInsc'])
+        s1200_xml.add_element("evtRemun/ideEmpregador", "nrInsc", text=evt_data['ideEmpregador']['nrInsc'])
+
+        s1200_xml.add_element("evtRemun", "ideTransmissor")
+        s1200_xml.add_element("evtRemun/ideTransmissor", "tpInsc", text=evt_data['ideTransmissor']['tpInsc'])
+        s1200_xml.add_element("evtRemun/ideTransmissor", "nrInsc", text=evt_data['ideTransmissor']['nrInsc'])
+
+        s1200_xml.add_element("evtRemun", "ideTrabalhador")
+        s1200_xml.add_element("evtRemun/ideTrabalhador", "cpfTrab", text=evt_data['ideTrabalhador']['cpfTrab'])
+
+        if evt_data['ideTrabalhador']['infoMV']:
+            s1200_xml.add_element("evtRemun/ideTrabalhador", "infoMV")
+            s1200_xml.add_element("evtRemun/ideTrabalhador/infoMV", "indMV", text=evt_data['ideTrabalhador']['infoMV']['indMV'])
+
+            s1200_xml.add_element("evtRemun/ideTrabalhador", "remunOutrEmpr")
+            s1200_xml.add_element("evtRemun/ideTrabalhador/remunOutrEmpr", "tpInsc", text=evt_data['ideTrabalhador']['remunOutrEmpr']['tpInsc'])
+            s1200_xml.add_element("evtRemun/ideTrabalhador/remunOutrEmpr", "nrInsc", text=evt_data['ideTrabalhador']['remunOutrEmpr']['nrInsc'])
+            s1200_xml.add_element("evtRemun/ideTrabalhador/remunOutrEmpr", "codCateg", text=evt_data['ideTrabalhador']['remunOutrEmpr']['codCateg'])
+            s1200_xml.add_element("evtRemun/ideTrabalhador/remunOutrEmpr", "vlrRemunOE", text=evt_data['ideTrabalhador']['remunOutrEmpr']['vlrRemunOE'])
+        
+        if evt_data['ideTrabalhador']['infoComplem']:
+            s1200_xml.add_element("evtRemun/ideTrabalhador", "infoComplem")
+            s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem", "nmTrab", text=evt_data['ideTrabalhador']['infoComplem']['nmTrab'])
+            s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem", "dtNascto", text=evt_data['ideTrabalhador']['infoComplem']['dtNascto'])
+
+            if evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']:
+                s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem", "sucessaoVinc")
+                s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem/sucessaoVinc", "tpInsc", text=evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']['tpInsc'])
+                s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem/sucessaoVinc", "nrInsc", text=evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']['nrInsc'])
+                s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem/sucessaoVinc", "matricAnt", text=evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']['matricAnt'])
+                s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem/sucessaoVinc", "dtAdm", text=evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']['dtAdm'])
+
+                if evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']['observacao']:
+                    s1200_xml.add_element("evtRemun/ideTrabalhador/infoComplem/sucessaoVinc", "observacao", text=evt_data['ideTrabalhador']['infoComplem']['sucessaoVinc']['observacao'])
+        
+        if evt_data['ideTrabalhador']['procJudTrab']:
+            s1200_xml.add_element("evtRemun/ideTrabalhor", "procJudTrab")
+            s1200_xml.add_element("evtRemun/ideTrabalhador/procJudTrab", "tpTrib", text=evt_data['ideTrabalhador']['procJudTrab']['tpTrib'])
+            s1200_xml.add_element("evtRemun/ideTrabalhador/procJudTrab", "nrProcJud", text=evt_data['ideTrabalhador']['procJudTrab']['nrProcJud'])
+            s1200_xml.add_element("evtRemun/ideTrabalhador/procJudTrab", "codSusp", text=evt_data['ideTrabalhador']['procJudTrab']['codSusp'])
+        
+        if evt_data['ideTrabalhador']['infoInterm']:
+            s1200_xml.add_element("evtRemun/ideTrabalhador", "infoInterm")
+            s1200_xml.add_element("evtRemun/ideTrabalhador/infoInterm", "dia", text=evt_data['ideTrabalhador']['infoInterm']['dia'])
+        
+        s1200_xml.add_element("evtRemun", "dmDev")
+
+        for dmDev in evt_data['dmDev']:
+            s1200_xml.add_element("evtRemun/dmDev", "ideDmDev", text=evt_data['dmDev']['ideDmDev'])
+            s1200_xml.add_element("evtRemun/dmDev", "codCateg", text=evt_data['dmDev']['codCateg'])
+
+            if evt_data['dmDev']['indRRA']
+                s1200_xml.add_element("evtRemun/dmDev", "indRRA", text=evt_data['dmDev']['indRRA'])
+
+                if evt_data['dmDev']['indRRA']['infoRRA']:
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA", "infoRRA")
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA", "tpProcRRA", text=evt_data['dmDev']['indRRA']['infoRRA']['tpProcRRA'])
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA", "nrProcRRA", text=evt_data['dmDev']['indRRA']['infoRRA']['nrProcRRA'])
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA", "descRRA", text=evt_data['dmDev']['indRRA']['infoRRA']['descRRA'])
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA", "qtdMesesRRA", text=evt_data['dmDev']['indRRA']['infoRRA']['qtdMesesRRA'])
+
+                    if evt_data['dmDev']['indRRA']['infoRRA']['despProcJud']:
+                        s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA", "despProcJud")
+                        s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA/despProcJud", "vlrDespCustas", text=evt_data['dmDev']['indRRA']['infoRRA']['despProcJud']['vlrDespCustas'])
+                        s1200_xml.add_element("evtRemun/dmDev/indRRA/infoRRA/despProcJud", "vlrDespAdvogados", text=evt_data['dmDev']['indRRA']['infoRRA']['despProcJud']['vlrDespAdvogados'])
+            
+                if evt_data['dmDev']['indRRA']['ideAdv']:
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA", "ideAdv")
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA/ideAdv", "tpInsc", text=evt_data['dmDev']['indRRA']['ideAdv']['tpInsc'])
+                    s1200_xml.add_element("evtRemun/dmDev/indRRA/ideAdv", "nrInsc", text=evt_data['dmDev']['indRRA']['ideAdv']['nrInsc'])
+
+                    if evt_data['dmDev']['indRRA']['ideAdv']['vlrAdv']:
+                        s1200_xml.add_element("evtRemun/dmDev/indRRA/ideAdv", "vlrAdv", text=evt_data['dmDev']['indRRA']['ideAdv']['vlrAdv'])
+        
+            if evt_data['dmDev']['infoPerApur']:
+                s1200_xml.add_element("evtRemun/dmDev", "infoPerApur")
+                for ideEstabLot in evt_data['dmDev']['infoPerApur']['ideEstabLot']:
+                    s1200_xml.add_element("evtRemun/dmDev/infoPerApur", "ideEstabLot")
+                    s1200_xml.add_element("evtRemun/dmDev/infoPerApur/ideEstabLot", "tpInsc", text=ideEstabLot['tpInsc'])
+                    s1200_xml.add_element("evtRemun/dmDev/infoPerApur/ideEstabLot", "nrInsc", text=ideEstabLot['nrInsc'])
+                    s1200_xml.add_element("evtRemun/dmDev/infoPerApur/ideEstabLot", "codLotacao", text=ideEstabLot['codLotacao'])
+                    s1200_xml.add_element("evtRemun/dmDev/infoPerApur/ideEstabLot", "qtdDiasAv", text=ideEstabLot['qtdDiasAv'])
+
+        
+        return s1200_xml.root
+
+    
     def add_event_to_lote(self, event: etree._Element):
         if len(self.batch_to_send) < 50:
             evento_id = None
