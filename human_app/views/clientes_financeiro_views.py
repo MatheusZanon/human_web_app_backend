@@ -39,6 +39,11 @@ class ClientesFinanceiroViewset(viewsets.ModelViewSet):
             else:
                 is_active = True if is_active == 'true' else False
                 queryset = ClientesFinanceiro.objects.filter(is_active=is_active).order_by('nome_razao_social')
+            
+            # Filtro por nome_razao_social
+            queryset = self.filter_queryset(queryset)
+
+            # Paginação
             page = self.paginate_queryset(queryset)
             if page is not None:
                 serializer = ClientesFinanceiroSerializer(page, many=True)
