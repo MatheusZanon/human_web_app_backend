@@ -41,6 +41,9 @@ Este repositório contém o backend de um projeto web desenvolvido em **Python**
 ## Participantes
 Matheus Zanon - perfil no github (MatheusZanon) / Bruno Apolinário - perfil no github (obrunoapolinario)
 
+## 🔗 Repositórios Relacionados
+[Frontend do projeto](https://github.com/MatheusZanon/human_web_app_frontend)
+
 ## 📖 Observação
 Este projeto foi desenvolvido como parte de um sistema de automação e backend web. Atualmente está **encerrado**, sendo mantido aqui apenas para fins de estudo, portfólio e referência técnica.
 Este repositório tem caráter educacional e demonstração de boas práticas de backend.
